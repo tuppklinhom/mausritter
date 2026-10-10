@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { navigate } from "../App";
+import { FxDirector } from "../fx/FxDirector";
 import { useRoom } from "../room";
 import { saveName, savedName } from "../session";
 import { DiceTray } from "./DiceTray";
@@ -79,6 +80,7 @@ export function Table({ code }: { code: string }) {
         <p className="m-auto font-display text-3xl text-parchment/50">Laying the table…</p>
       )}
       <Toast />
+      <FxDirector />
     </div>
   );
 }

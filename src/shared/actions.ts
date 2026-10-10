@@ -380,6 +380,7 @@ export function applyAction(state: CampaignState, action: Action, ctx: ActionCon
         title: `${from.c.name} gives ${moved.name} to ${to.c.name}`,
         detail: where === "overflow" ? `${to.c.name} has no room — encumbered!` : undefined,
         subjectId: to.c.id,
+        loot: { name: moved.name, defId: moved.defId, kind: moved.kind },
       });
       break;
     }
@@ -411,6 +412,7 @@ export function applyAction(state: CampaignState, action: Action, ctx: ActionCon
         title: `${c.name} gains ${newCard.name}`,
         detail: where === "overflow" ? "No room — encumbered!" : undefined,
         subjectId: c.id,
+        loot: { name: newCard.name, defId: newCard.defId, kind: newCard.kind },
       });
       break;
     }
@@ -429,8 +431,8 @@ export function applyAction(state: CampaignState, action: Action, ctx: ActionCon
         kind: "event",
         title: `${c.name} is ${cond.name}`,
         detail: [CONDITIONS[cond.defId]?.effect, where === "overflow" ? "No room — encumbered!" : undefined].filter(Boolean).join(" "),
-        outcome: "fail",
         subjectId: c.id,
+        condition: cond.name,
       });
       break;
     }

@@ -18,33 +18,19 @@ export interface CardFace {
   caption?: string;
   /** Extra line for conditions. */
   effect?: string;
-  icon: string;
 }
 
-const ICONS: Record<string, string> = {
-  weapon: "⚔️",
-  armour: "🛡️",
-  ammo: "🎯",
-  light: "🕯️",
-  ration: "🧀",
-  purse: "👛",
-  spell: "🪨",
-  gear: "🎒",
-  condition: "⚠️",
-};
-
 export function cardFace(card: CardInstance): CardFace {
-  const icon = ICONS[card.kind] ?? "🎒";
   if (card.kind === "condition") {
     const def = CONDITIONS[card.defId];
-    return { icon, caption: `Clear: ${def?.clearText ?? card.note ?? "—"}`, effect: def?.effect };
+    return { caption: `Clear: ${def?.clearText ?? card.note ?? "—"}`, effect: def?.effect };
   }
   const def = ITEMS[card.defId];
   if (def?.weapon) {
     const w = def.weapon;
-    return { icon, stat: w.bothPawsDamage ? `${w.damage}/${w.bothPawsDamage}` : w.damage, caption: CLASS_LABEL[w.class] };
+    return { stat: w.bothPawsDamage ? `${w.damage}/${w.bothPawsDamage}` : w.damage, caption: CLASS_LABEL[w.class] };
   }
-  if (def?.armour) return { icon, stat: `${def.armour.defence} def`, caption: def.armour.class === "light" ? "Light armour" : "Heavy armour" };
-  if (def?.kind === "ammo") return { icon, caption: "Ammunition" };
-  return { icon, caption: card.note };
+  if (def?.armour) return { stat: `${def.armour.defence} def`, caption: def.armour.class === "light" ? "Light armour" : "Heavy armour" };
+  if (def?.kind === "ammo") return { caption: "Ammunition" };
+  return { caption: card.note };
 }

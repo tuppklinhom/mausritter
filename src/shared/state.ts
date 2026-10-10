@@ -34,6 +34,10 @@ export interface LogEntry {
   outcome?: Outcome;
   /** Mouse or hireling this concerns, for highlighting. */
   subjectId?: string;
+  /** A card that just arrived in the subject's inventory (for the fly-in effect). */
+  loot?: { name: string; defId: string; kind: string };
+  /** A Condition was just inflicted. */
+  condition?: string;
 }
 
 /** Everything every client is allowed to see. Secrets (GM key) live outside this. */

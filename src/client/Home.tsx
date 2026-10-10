@@ -35,7 +35,7 @@ export function Home() {
   }
 
   return (
-    <main className="wood flex min-h-full items-center justify-center p-4">
+    <main className="wood relative flex min-h-full items-center justify-center p-4">
       <div className="parchment w-full max-w-md rounded-lg p-8 shadow-2xl">
         <h1 className="font-display text-center text-5xl text-ink">Mausritter</h1>
         <p className="mt-1 text-center text-ink-soft">A table for small brave mice</p>
@@ -68,6 +68,10 @@ export function Home() {
 
         {error && <p className="mt-4 text-center text-ember">{error}</p>}
       </div>
+      <footer className="absolute bottom-3 max-w-xl px-4 text-center text-xs text-parchment/50">
+        Mausritter by Isaac Williams · Icons by Lorc, Delapouite & contributors at game-icons.net (CC BY 3.0) · 3D dice by
+        dice-box-threejs (MIT)
+      </footer>
     </main>
   );
 }

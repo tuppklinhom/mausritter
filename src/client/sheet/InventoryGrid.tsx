@@ -15,6 +15,7 @@ import { canPlace, cellsOf, isDepleted } from "../../shared/rules/inventory";
 import type { CardInstance, CellDef, Inventory, InventoryLayout } from "../../shared/rules/types";
 import { Dots } from "../ui";
 import { cardFace } from "./cards";
+import { Icon, cardIcon } from "../Icon";
 
 interface Props {
   inventory: Inventory;
@@ -202,7 +203,9 @@ export function CardTile({ card, small, lifted, onUsage }: { card: CardInstance;
       </div>
       {!small && (
         <>
-          <div className="flex flex-1 items-center justify-center text-2xl opacity-80">{face.icon}</div>
+          <div className={`flex flex-1 items-center justify-center ${isCondition ? "text-ember" : "text-ink/75"}`}>
+            <Icon name={cardIcon(card)} className="h-9 w-9" />
+          </div>
           {face.effect && <div className="text-[11px] leading-tight italic">{face.effect}</div>}
           {face.caption && <div className="truncate text-[11px] font-bold text-ink-soft">{face.caption}</div>}
         </>

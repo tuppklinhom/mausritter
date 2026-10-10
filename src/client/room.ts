@@ -19,6 +19,8 @@ interface RoomStore {
   online: string[];
   /** Most recent entry with dice or an outcome, for the stage to play once. */
   spotlight: LogEntry | null;
+  /** Every batch of new entries, for sound and fly-in effects. */
+  feed: { seq: number; entries: LogEntry[] } | null;
   connect: (code: string, name: string) => void;
   disconnect: () => void;
   send: (action: Action) => void;
@@ -37,6 +39,7 @@ export const useRoom = create<RoomStore>((set, get) => ({
   state: null,
   online: [],
   spotlight: null,
+  feed: null,
 
   connect(code, name) {
     get().disconnect();
@@ -66,8 +69,8 @@ export const useRoom = create<RoomStore>((set, get) => ({
           set({ state: msg.state, online: msg.online });
           break;
         case "events": {
-          const show = [...msg.entries].reverse().find((en) => en.dice?.length || en.outcome || en.total !== undefined);
-          if (show) set({ spotlight: show });
+          const show = [...msg.entries].reverse().find((en) => en.dice?.length || en.outcome || en.total !== undefined || en.condition);
+          set({ feed: { seq: (get().feed?.seq ?? 0) + 1, entries: msg.entries }, ...(show ? { spotlight: show } : {}) });
           break;
         }
         case "error":
@@ -80,7 +83,7 @@ export const useRoom = create<RoomStore>((set, get) => ({
   disconnect() {
     socket?.close();
     socket = null;
-    set({ status: "idle", you: null, state: null, online: [], spotlight: null });
+    set({ status: "idle", you: null, state: null, online: [], spotlight: null, feed: null });
   },
 
   send(action) {

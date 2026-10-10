@@ -1,9 +1,11 @@
 import { useState } from "react";
+import { useFx } from "../fx/settings";
 import { useRoom } from "../room";
 
 export function PartyBar({ code }: { code: string }) {
   const { state, online, you, status } = useRoom();
   const [copied, setCopied] = useState(false);
+  const { muted, dice3d, toggleMute, toggleDice3d } = useFx();
 
   async function copyInvite() {
     try {
@@ -30,6 +32,15 @@ export function PartyBar({ code }: { code: string }) {
         {copied ? "link copied!" : code}
       </button>
       {status !== "open" && <span className="text-sm text-gold">{status === "connecting" ? "connecting…" : "reconnecting…"}</span>}
+
+      <div className="flex gap-1">
+        <button onClick={toggleMute} title={muted ? "Sound off" : "Sound on"} className="rounded px-2 py-0.5 hover:bg-white/10" aria-label={muted ? "Unmute" : "Mute"}>
+          {muted ? "🔇" : "🔊"}
+        </button>
+        <button onClick={toggleDice3d} title={dice3d ? "3D dice on" : "3D dice off"} className={`rounded px-2 py-0.5 text-sm hover:bg-white/10 ${dice3d ? "" : "opacity-50 line-through"}`}>
+          3D dice
+        </button>
+      </div>
 
       <ul className="ml-auto flex flex-wrap gap-2">
         {members.map((m) => {

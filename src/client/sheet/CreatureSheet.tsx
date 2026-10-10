@@ -185,7 +185,7 @@ export function CreatureSheet({ creature, compact = false }: { creature: Creatur
       )}
 
       {/* Inventory */}
-      <section>
+      <section data-inventory={id}>
         <SectionTitle
           right={
             editable && (

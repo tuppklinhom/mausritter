@@ -39,8 +39,8 @@ test("GM and a player share a table: create a mouse, take damage, rearrange gear
   // GM opens the mouse and deals 1 damage; player's HP drops by one
   const hpBefore = await player.locator("aside").getByText(/^\d+\/\d+$/).nth(3).innerText().catch(() => "");
   await gm.locator("aside").getByText(mouseName).click();
-  await gm.getByPlaceholder("dmg").fill("1");
-  await gm.getByRole("button", { name: "Take damage" }).click();
+  await gm.getByPlaceholder("dmg").first().fill("1");
+  await gm.getByRole("button", { name: "Take damage" }).first().click();
   await expect(player.locator("aside").getByText(/takes 1 damage|takes 0 damage/)).toHaveCount(0); // log lives in Chronicle tab
   await expect(player.getByText(new RegExp(`${mouseName} takes [01] damage`)).first()).toBeVisible();
   expect(hpBefore).not.toBe("");
@@ -67,7 +67,7 @@ test("GM and a player share a table: create a mouse, take damage, rearrange gear
   // Player makes a STR save; the stage on the GM's screen shows it
   await player.getByRole("button", { name: "Save" }).first().click();
   await expect(gm.getByText(/STR save/).first()).toBeVisible();
-  await expect(gm.getByText(/^(Success|Failed)$/)).toBeVisible();
+  await expect(gm.getByText(/^(Success|Failed)$/)).toBeVisible({ timeout: 12_000 });
 
   await player.screenshot({ path: "test-results/player.png" });
   await gm.screenshot({ path: "test-results/gm.png" });
