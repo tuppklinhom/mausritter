@@ -92,6 +92,15 @@ export function rollD66(rng: Rng = defaultRng): number {
   return rollDie(6, rng) * 10 + rollDie(6, rng);
 }
 
+/** Deterministic rng for tests: each entry forces one die, as [value, sides]. Cycles. */
+export function scriptedRng(...rolls: [number, number][]): Rng {
+  let i = 0;
+  return () => {
+    const [v, sides] = rolls[i++ % rolls.length];
+    return (v - 1) / sides + 1e-9;
+  };
+}
+
 /** Deterministic rng for tests: cycles through the given die faces for a dN. */
 export function fixedRng(values: number[], sides: number): Rng {
   let i = 0;
