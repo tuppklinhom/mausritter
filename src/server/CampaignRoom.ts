@@ -1,7 +1,7 @@
 import { Server, type Connection, type ConnectionContext, type WSMessage } from "partyserver";
-import { ClientMessage, type ServerMessage } from "../shared/protocol";
-import { LOG_LIMIT, type CampaignState, type Role, type RollEntry } from "../shared/state";
-import { roll } from "../shared/rules/dice";
+import { Action, ActionError, applyAction } from "../shared/actions";
+import type { ServerMessage } from "../shared/protocol";
+import { emptyCampaign, migrateCampaign, type CampaignState, type Role } from "../shared/state";
 
 interface ConnState {
   pid: string;
@@ -19,7 +19,8 @@ export class CampaignRoom extends Server<Env> {
   private gmKey: string | null = null;
 
   async onStart() {
-    this.state = (await this.ctx.storage.get<CampaignState>("state")) ?? null;
+    const saved = await this.ctx.storage.get<CampaignState>("state");
+    this.state = saved ? migrateCampaign(saved) : null;
     this.gmKey = (await this.ctx.storage.get<string>("gmKey")) ?? null;
   }
 
@@ -28,7 +29,7 @@ export class CampaignRoom extends Server<Env> {
     if (request.method === "POST" && url.pathname.endsWith("/init")) {
       if (this.state) return new Response("Room exists", { status: 409 });
       const { gmKey } = await request.json<{ gmKey: string }>();
-      this.state = { code: this.name, createdAt: Date.now(), members: {}, log: [] };
+      this.state = emptyCampaign(this.name);
       this.gmKey = gmKey;
       await this.ctx.storage.put({ state: this.state, gmKey });
       return new Response("ok");
@@ -57,43 +58,25 @@ export class CampaignRoom extends Server<Env> {
 
   async onMessage(conn: Connection<ConnState>, raw: WSMessage) {
     if (!this.state || !conn.state) return;
-    let msg: ClientMessage;
+    let action: Action;
     try {
-      msg = ClientMessage.parse(JSON.parse(String(raw)));
+      action = Action.parse(JSON.parse(String(raw)));
     } catch {
       return this.send(conn, { t: "error", message: "Malformed message" });
     }
-    const member = this.state.members[conn.state.pid];
+    const actor = this.state.members[conn.state.pid];
+    if (!actor) return;
 
-    switch (msg.t) {
-      case "roll": {
-        let result;
-        try {
-          result = roll(msg.expr);
-        } catch (e) {
-          return this.send(conn, { t: "error", message: (e as Error).message });
-        }
-        const entry: RollEntry = {
-          id: crypto.randomUUID(),
-          at: Date.now(),
-          byId: member.id,
-          byName: member.name,
-          label: msg.label,
-          ...result,
-        };
-        this.state.log.push(entry);
-        if (this.state.log.length > LOG_LIMIT) this.state.log.splice(0, this.state.log.length - LOG_LIMIT);
-        await this.save();
-        this.broadcastMsg({ t: "rolled", entry });
-        return;
-      }
-      case "rename": {
-        member.name = msg.name;
-        await this.save();
-        this.broadcastState();
-        return;
-      }
+    let entries;
+    try {
+      entries = applyAction(this.state, action, { actor });
+    } catch (e) {
+      if (e instanceof ActionError) return this.send(conn, { t: "error", message: e.message });
+      throw e;
     }
+    await this.save();
+    this.broadcastState();
+    if (entries.length) this.broadcastMsg({ t: "events", entries });
   }
 
   onClose() {

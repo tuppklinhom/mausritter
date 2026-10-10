@@ -1,39 +1,46 @@
 import PartySocket from "partysocket";
 import { create } from "zustand";
-import { PARTY, type ClientMessage, type ServerMessage } from "../shared/protocol";
-import { LOG_LIMIT, type CampaignState, type Role, type RollEntry } from "../shared/state";
+import type { Action } from "../shared/actions";
+import { PARTY, type ServerMessage } from "../shared/protocol";
+import type { CampaignState, LogEntry, Role } from "../shared/state";
 import { gmKeyFor, playerId } from "./session";
 
 type Status = "idle" | "connecting" | "open" | "closed" | "error";
 
 interface RoomStore {
   status: Status;
-  error: string | null;
+  /** Fatal connection error (bad room). */
+  fatal: string | null;
+  /** Latest action rejection, shown as a toast. */
+  toast: { id: number; message: string } | null;
   code: string | null;
   you: { id: string; role: Role } | null;
   state: CampaignState | null;
   online: string[];
-  /** Most recent roll, used by the stage to play its animation once. */
-  lastRoll: RollEntry | null;
+  /** Most recent entry with dice or an outcome, for the stage to play once. */
+  spotlight: LogEntry | null;
   connect: (code: string, name: string) => void;
   disconnect: () => void;
-  send: (msg: ClientMessage) => void;
+  send: (action: Action) => void;
+  showToast: (message: string) => void;
 }
 
 let socket: PartySocket | null = null;
+let toastId = 0;
 
 export const useRoom = create<RoomStore>((set, get) => ({
   status: "idle",
-  error: null,
+  fatal: null,
+  toast: null,
   code: null,
   you: null,
   state: null,
   online: [],
-  lastRoll: null,
+  spotlight: null,
 
   connect(code, name) {
     get().disconnect();
-    set({ status: "connecting", error: null, code });
+    set({ status: "connecting", fatal: null, code });
     const query: Record<string, string> = { pid: playerId(), name };
     const gm = gmKeyFor(code);
     if (gm) query.gm = gm;
@@ -44,7 +51,7 @@ export const useRoom = create<RoomStore>((set, get) => ({
     ws.addEventListener("close", (e) => {
       if (e.code === 4004) {
         ws.close();
-        set({ status: "error" });
+        set({ status: "error", fatal: e.reason || "This table could not be found." });
       } else if (get().status !== "error") {
         set({ status: "closed" });
       }
@@ -58,16 +65,13 @@ export const useRoom = create<RoomStore>((set, get) => ({
         case "state":
           set({ state: msg.state, online: msg.online });
           break;
-        case "rolled": {
-          const state = get().state;
-          if (state) {
-            const log = [...state.log, msg.entry].slice(-LOG_LIMIT);
-            set({ state: { ...state, log }, lastRoll: msg.entry, error: null });
-          }
+        case "events": {
+          const show = [...msg.entries].reverse().find((en) => en.dice?.length || en.outcome || en.total !== undefined);
+          if (show) set({ spotlight: show });
           break;
         }
         case "error":
-          set({ error: msg.message });
+          get().showToast(msg.message);
           break;
       }
     });
@@ -76,10 +80,23 @@ export const useRoom = create<RoomStore>((set, get) => ({
   disconnect() {
     socket?.close();
     socket = null;
-    set({ status: "idle", you: null, state: null, online: [], lastRoll: null });
+    set({ status: "idle", you: null, state: null, online: [], spotlight: null });
   },
 
-  send(msg) {
-    socket?.send(JSON.stringify(msg));
+  send(action) {
+    socket?.send(JSON.stringify(action));
+  },
+
+  showToast(message) {
+    const id = ++toastId;
+    set({ toast: { id, message } });
+    setTimeout(() => {
+      if (get().toast?.id === id) set({ toast: null });
+    }, 3500);
   },
 }));
+
+/** Whether the current user may act for a creature owned by `ownerId`. */
+export function useCanEdit(ownerId: string | undefined): boolean {
+  return useRoom((s) => s.you?.role === "gm" || (!!ownerId && s.you?.id === ownerId));
+}

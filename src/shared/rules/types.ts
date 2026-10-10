@@ -100,6 +100,8 @@ export interface Mouse {
   bank: string;
   incapacitated: boolean;
   dead: boolean;
+  /** Weapons/armour/ammo used since the last after-fight usage check. */
+  usedInFight: string[];
 }
 
 export interface Hireling {
@@ -116,4 +118,8 @@ export interface Hireling {
   inventory: Inventory;
   incapacitated: boolean;
   dead: boolean;
+  usedInFight: string[];
 }
+
+/** Anything with a sheet: player mice and hirelings share the combat-relevant shape. */
+export type Creature = Mouse | Hireling;

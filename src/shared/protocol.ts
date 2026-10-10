@@ -1,30 +1,15 @@
-import { z } from "zod";
-import type { CampaignState, Role, RollEntry } from "./state";
+import type { CampaignState, LogEntry, Role } from "./state";
+
+export { Action as ClientMessage } from "./actions";
 
 export const PARTY = "campaign-room";
-
-export const ClientMessage = z.discriminatedUnion("t", [
-  z.object({
-    t: z.literal("roll"),
-    expr: z.string().max(40),
-    label: z.string().max(60).optional(),
-  }),
-  z.object({ t: z.literal("rename"), name: z.string().trim().min(1).max(30) }),
-]);
-export type ClientMessage = z.infer<typeof ClientMessage>;
 
 export type ServerMessage =
   | { t: "welcome"; you: { id: string; role: Role } }
   | { t: "state"; state: CampaignState; online: string[] }
-  | { t: "rolled"; entry: RollEntry }
+  /** New log entries from the last action, so clients can animate them. */
+  | { t: "events"; entries: LogEntry[] }
   | { t: "error"; message: string };
-
-/** Query params a socket connects with. */
-export interface ConnectParams {
-  pid: string;
-  name: string;
-  gm?: string;
-}
 
 export interface CreateRoomResponse {
   code: string;

@@ -4,3 +4,5 @@ dist
 .dev.vars
 *.tsbuildinfo
 reference/*.pdf
+test-results
+playwright-report

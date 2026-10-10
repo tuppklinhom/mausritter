@@ -127,6 +127,7 @@ export function createHireling(
     inventory: emptyInventory(HIRELING_LAYOUT),
     incapacitated: false,
     dead: false,
+    usedInFight: [],
   };
 }
 
@@ -156,5 +157,6 @@ export function createMouse(r: MouseRoll, choices: FinalizeChoices, ids: { id: s
     bank: "",
     incapacitated: false,
     dead: false,
+    usedInFight: [],
   };
 }

@@ -1,32 +1,39 @@
 import { useEffect, useRef } from "react";
-import type { RollEntry } from "../../shared/state";
+import type { LogEntry, Outcome } from "../../shared/state";
 import { useRoom } from "../room";
 
-const NO_ROLLS: RollEntry[] = [];
+const NO_ENTRIES: LogEntry[] = [];
+
+const OUTCOME_CLS: Partial<Record<Outcome, string>> = {
+  success: "border-l-moss",
+  fail: "border-l-ember",
+  critical: "border-l-ember bg-ember/10",
+  dead: "border-l-ink bg-ink/10",
+  levelup: "border-l-gold bg-gold/15",
+  depleted: "border-l-gold",
+};
 
 export function RollLog() {
-  const log = useRoom((s) => s.state?.log ?? NO_ROLLS);
+  const log = useRoom((s) => s.state?.log ?? NO_ENTRIES);
   const end = useRef<HTMLLIElement>(null);
 
   useEffect(() => {
-    end.current?.scrollIntoView({ behavior: "smooth" });
+    end.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [log.length]);
 
   return (
-    <>
-      <h2 className="border-b border-ink-soft/20 px-4 py-2 font-display text-2xl">Chronicle</h2>
-      <ol className="flex-1 space-y-2 overflow-y-auto p-3">
-        {log.length === 0 && <li className="text-ink-soft italic">No rolls yet.</li>}
-        {log.map((r) => (
-          <li key={r.id} className="animate-slide-in rounded-md bg-white/40 px-3 py-2">
-            <div className="flex items-baseline justify-between gap-2">
-              <span className="font-bold">{r.byName}</span>
-              <span className="text-xs text-ink-soft">{new Date(r.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-            </div>
-            <div className="flex items-baseline justify-between gap-2">
-              <span className="text-sm text-ink-soft">
-                {r.label ?? r.expr}{" "}
-                <span className="font-mono">
+    <ol className="space-y-1.5">
+      {log.length === 0 && <li className="text-ink-soft italic">Nothing has happened yet.</li>}
+      {log.map((r) => (
+        <li key={r.id} className={`animate-slide-in rounded-md border-l-4 bg-white/40 px-3 py-1.5 ${r.outcome ? OUTCOME_CLS[r.outcome] : "border-l-transparent"}`}>
+          <div className="flex items-baseline justify-between gap-2">
+            <span className="font-bold">{r.title}</span>
+            {r.total !== undefined && <span className="font-display text-2xl leading-none">{r.total}</span>}
+          </div>
+          {(r.detail || r.dice?.length) && (
+            <div className="text-sm text-ink-soft">
+              {r.dice && r.dice.length > 0 && (
+                <span className="mr-1 font-mono">
                   [
                   {r.dice.map((d, i) => (
                     <span key={i}>
@@ -36,13 +43,16 @@ export function RollLog() {
                   ))}
                   ]
                 </span>
-              </span>
-              <span className="font-display text-2xl">{r.total}</span>
+              )}
+              {r.detail}
             </div>
-          </li>
-        ))}
-        <li ref={end} />
-      </ol>
-    </>
+          )}
+          <div className="text-[11px] text-ink-soft/70">
+            {r.byName} · {new Date(r.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+          </div>
+        </li>
+      ))}
+      <li ref={end} />
+    </ol>
   );
 }

@@ -5,7 +5,6 @@ const QUICK = ["d4", "d6", "d8", "d10", "d12", "d20"];
 
 export function DiceTray() {
   const send = useRoom((s) => s.send);
-  const error = useRoom((s) => s.error);
   const [custom, setCustom] = useState("");
 
   return (
@@ -35,7 +34,6 @@ export function DiceTray() {
         />
         <button className="rounded-md bg-ember px-3 py-1.5 font-bold text-parchment hover:brightness-110">Roll</button>
       </form>
-      {error && <p className="w-full text-sm text-gold">{error}</p>}
     </div>
   );
 }
