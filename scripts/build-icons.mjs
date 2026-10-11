@@ -25,6 +25,8 @@ const NAMES = [
   // time & weather
   "sun", "moon", "sunrise", "sunset", "night-sky", "raining", "snowing", "sun-cloud", "falling-leaf",
   "flowers", "hourglass", "footprint", "cave-entrance", "whirlwind",
+  // map
+  "high-grass", "pine-tree", "waves", "house", "mushroom-house", "position-marker", "treasure-map", "paint-brush", "eye-target",
 ];
 
 const size = set.width ?? 512;

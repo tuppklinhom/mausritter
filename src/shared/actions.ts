@@ -5,7 +5,7 @@ import { SPELLS } from "./data/spells";
 import { gritForLevel, levelForXp, levelUp, rest } from "./rules/advancement";
 import { createHireling, createMouse, grantedHirelings, rollMouse, swapStats } from "./rules/character";
 import { afterFightUsage, applyDamage, attack } from "./rules/combat";
-import { roll, type Rng } from "./rules/dice";
+import { roll, rollDie, type Rng } from "./rules/dice";
 import {
   HIRELING_LAYOUT,
   MOUSE_LAYOUT,
@@ -26,11 +26,16 @@ import { saveFor, type SaveMode } from "./rules/saves";
 import { castSpell } from "./rules/spells";
 import { advanceClock, burnLights, rollEncounter, type EncounterRoll } from "./rules/time";
 import { AMBIENCES, backdropById } from "./data/scenes";
+import { HEX_TYPES, hexTypeFor } from "./data/hexcrawl";
+import { generateMap, rollDetail, rollLandmark, resizeMap } from "./rules/hexmap";
 import type { CardInstance, Creature, InventoryLayout, Mouse, Stat } from "./rules/types";
 import { LOG_LIMIT, TURNS_PER_WATCH, WATCH_NAMES, type CampaignState, type DieFace, type GmState, type LogEntry, type Member } from "./state";
 
 const id = z.string().min(1).max(64);
 const stat = z.enum(["str", "dex", "wil"]);
+
+const mapSize = z.number().int().min(1).max(15);
+const hexKeySchema = z.string().regex(/^\d{1,2},\d{1,2}$/);
 
 const NpcSchema = z.object({
   id,
@@ -118,6 +123,26 @@ export const Action = z.discriminatedUnion("t", [
   z.object({ t: z.literal("clearDialogue") }),
   z.object({ t: z.literal("setAmbience"), ambience: z.string() }),
   z.object({ t: z.literal("setGmNotes"), notes: z.string().max(20000) }),
+  z.object({ t: z.literal("setStageView"), view: z.enum(["scene", "map"]) }),
+
+  // Hex map
+  z.object({ t: z.literal("mapGenerate"), cols: mapSize, rows: mapSize }),
+  z.object({ t: z.literal("mapResize"), cols: mapSize, rows: mapSize }),
+  z.object({
+    t: z.literal("mapSetHex"),
+    key: hexKeySchema,
+    patch: z.object({
+      type: z.enum(["countryside", "forest", "river", "town", "settlement"]).optional(),
+      name: z.string().trim().max(40).optional(),
+      landmark: z.string().trim().max(80).optional(),
+      detail: z.string().trim().max(160).optional(),
+      notes: z.string().max(2000).optional(),
+      difficult: z.boolean().optional(),
+    }),
+  }),
+  z.object({ t: z.literal("mapRollHex"), key: hexKeySchema, part: z.enum(["all", "type", "landmark", "detail"]) }),
+  z.object({ t: z.literal("mapReveal"), keys: z.array(hexKeySchema).min(1).max(400), revealed: z.boolean() }),
+  z.object({ t: z.literal("mapMoveParty"), key: hexKeySchema, travel: z.boolean() }),
 ]);
 export type Action = z.infer<typeof Action>;
 
@@ -159,6 +184,53 @@ export function applyAction(state: CampaignState, action: Action, ctx: ActionCon
     if (!isGm) fail("Only the GM can do that.");
     state.gm ??= { scenes: [], notes: "" };
     return state.gm;
+  }
+
+  /** Moves the clock on: lit lights burn, and the encounter die rolls when it's due. */
+  function passTime(turns: number, why?: string) {
+    const adv = advanceClock(state.clock, turns);
+    state.clock = adv.clock;
+    const watches = turns / TURNS_PER_WATCH;
+    const span = Number.isInteger(watches) ? `${watches} watch${watches > 1 ? "es" : ""}` : `${turns} turn${turns > 1 ? "s" : ""}`;
+    log({
+      kind: "event",
+      title: why ?? `Time passes: ${span}`,
+      detail: `${why ? `${span} · ` : ""}Day ${state.clock.day}, ${WATCH_NAMES[state.clock.watch]}, turn ${state.clock.turn + 1}`,
+    });
+    for (const c of [...Object.values(state.mice), ...Object.values(state.hirelings)]) {
+      for (const b of burnLights(c.inventory, turns)) {
+        log({
+          kind: "event",
+          title: b.burnedOut ? `${c.name}'s ${b.card.name} burn out!` : `${c.name}'s ${b.card.name} burn down (${b.marked} usage)`,
+          outcome: b.burnedOut ? "depleted" : undefined,
+          subjectId: c.id,
+        });
+      }
+    }
+    if (adv.dungeonChecks > 0) {
+      const rolls = Array.from({ length: adv.dungeonChecks }, () => rollEncounter(false, rng));
+      const worst = rolls.find((r) => r.kind === "encounter") ?? rolls.find((r) => r.kind === "omen") ?? rolls[0];
+      if (rolls.length === 1) logEncounter(worst, "every 3 turns");
+      else
+        log({
+          kind: "encounter",
+          title: `Encounter die × ${rolls.length}`,
+          detail:
+            worst.kind === "encounter"
+              ? "Encounter! Roll for the type."
+              : worst.kind === "omen"
+                ? "An omen of what's to come… Roll for the type."
+                : "All quiet.",
+          dice: rolls.slice(-12).map((r) => ({ sides: 6, value: r.roll, kept: r === worst })),
+          total: worst.roll,
+          outcome: worst.kind,
+        });
+    }
+    for (const when of adv.wildernessChecks) logEncounter(rollEncounter(true, rng), when);
+  }
+
+  function hexAt(key: string) {
+    return state.map.hexes[key] ?? fail("No such hex on the map.");
   }
 
   /** Logs an encounter-die roll; the stage announces it to everyone. */
@@ -623,49 +695,10 @@ export function applyAction(state: CampaignState, action: Action, ctx: ActionCon
       break;
     }
 
-    case "advanceTime": {
+    case "advanceTime":
       gmOnly();
-      const adv = advanceClock(state.clock, action.turns);
-      state.clock = adv.clock;
-      const watches = action.turns / TURNS_PER_WATCH;
-      const span = Number.isInteger(watches) ? `${watches} watch${watches > 1 ? "es" : ""}` : `${action.turns} turn${action.turns > 1 ? "s" : ""}`;
-      log({
-        kind: "event",
-        title: `Time passes: ${span}`,
-        detail: `Day ${state.clock.day}, ${WATCH_NAMES[state.clock.watch]}, turn ${state.clock.turn + 1}`,
-      });
-      for (const c of [...Object.values(state.mice), ...Object.values(state.hirelings)]) {
-        for (const b of burnLights(c.inventory, action.turns)) {
-          log({
-            kind: "event",
-            title: b.burnedOut ? `${c.name}'s ${b.card.name} burn out!` : `${c.name}'s ${b.card.name} burn down (${b.marked} usage)`,
-            outcome: b.burnedOut ? "depleted" : undefined,
-            subjectId: c.id,
-          });
-        }
-      }
-      if (adv.dungeonChecks > 0) {
-        const rolls = Array.from({ length: adv.dungeonChecks }, () => rollEncounter(false, rng));
-        const worst = rolls.find((r) => r.kind === "encounter") ?? rolls.find((r) => r.kind === "omen") ?? rolls[0];
-        if (rolls.length === 1) logEncounter(worst, "every 3 turns");
-        else
-          log({
-            kind: "encounter",
-            title: `Encounter die × ${rolls.length}`,
-            detail:
-              worst.kind === "encounter"
-                ? "Encounter! Roll for the type."
-                : worst.kind === "omen"
-                  ? "An omen of what's to come… Roll for the type."
-                  : "All quiet.",
-            dice: rolls.slice(-12).map((r) => ({ sides: 6, value: r.roll, kept: r === worst })),
-            total: worst.roll,
-            outcome: worst.kind,
-          });
-      }
-      for (const when of adv.wildernessChecks) logEncounter(rollEncounter(true, rng), when);
+      passTime(action.turns);
       break;
-    }
 
     case "rollEncounter":
       gmOnly();
@@ -711,7 +744,7 @@ export function applyAction(state: CampaignState, action: Action, ctx: ActionCon
       const gm = gmOnly();
       const scene = gm.scenes.find((s) => s.id === action.id) ?? fail("That scene is gone.");
       const { notes: _n, ambience, ...shown } = scene;
-      state.stage = { scene: { ...shown, shownAt: now }, ambience, dialogue: null };
+      state.stage = { view: "scene", scene: { ...shown, shownAt: now }, ambience, dialogue: null };
       log({ kind: "event", title: `Scene: ${scene.title}`, detail: scene.subtitle });
       break;
     }
@@ -741,6 +774,63 @@ export function applyAction(state: CampaignState, action: Action, ctx: ActionCon
     case "setGmNotes":
       gmOnly().notes = action.notes;
       break;
+
+    case "setStageView":
+      gmOnly();
+      state.stage.view = action.view;
+      break;
+
+    case "mapGenerate":
+      gmOnly();
+      state.map = generateMap(action.cols, action.rows, rng);
+      break;
+
+    case "mapResize":
+      gmOnly();
+      state.map = resizeMap(state.map, action.cols, action.rows);
+      break;
+
+    case "mapSetHex": {
+      gmOnly();
+      const hex = hexAt(action.key);
+      for (const [k, v] of Object.entries(action.patch)) {
+        if (v === undefined) continue;
+        Object.assign(hex, { [k]: v === "" ? undefined : v });
+      }
+      break;
+    }
+
+    case "mapRollHex": {
+      gmOnly();
+      const hex = hexAt(action.key);
+      if (action.part === "all" || action.part === "type") hex.type = hexTypeFor(rollDie(6, rng));
+      if (action.part === "all" || action.part === "landmark" || action.part === "type") hex.landmark = rollLandmark(hex.type, rng);
+      if (action.part === "all" || action.part === "detail") hex.detail = rollDetail(rng);
+      break;
+    }
+
+    case "mapReveal": {
+      gmOnly();
+      for (const k of action.keys) hexAt(k).revealed = action.revealed;
+      break;
+    }
+
+    case "mapMoveParty": {
+      gmOnly();
+      const hex = hexAt(action.key);
+      const wasHidden = !hex.revealed;
+      state.map.party = action.key;
+      hex.revealed = true;
+      const place = hex.name ?? hex.landmark ?? HEX_TYPES.find((t) => t.id === hex.type)!.name;
+      if (action.travel) {
+        if (state.clock.mode !== "wilderness") state.clock.mode = "wilderness";
+        passTime(TURNS_PER_WATCH * (hex.difficult ? 2 : 1), `The party travels to ${place}`);
+      } else {
+        log({ kind: "event", title: `The party arrives at ${place}` });
+      }
+      if (wasHidden) log({ kind: "event", title: `Discovered: ${place}`, detail: hex.landmark && hex.name ? hex.landmark : undefined });
+      break;
+    }
   }
 
   state.log.push(...events);

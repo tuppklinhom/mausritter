@@ -263,3 +263,40 @@ describe("time and light", () => {
     expect(enc.detail).toContain("hour 9");
   });
 });
+
+describe("hex map", () => {
+  it("only the GM edits the map", () => {
+    const { run } = setup();
+    expect(() => run(pip, { t: "mapGenerate", cols: 5, rows: 5 })).toThrow("Only the GM");
+  });
+
+  it("travelling to a hex reveals it and takes a watch (two if difficult)", () => {
+    const { state, run } = setup();
+    run(gm, { t: "mapGenerate", cols: 5, rows: 5 });
+    run(gm, { t: "mapSetHex", key: "3,2", patch: { name: "Owl Hill", difficult: true } });
+    const before = state.clock;
+    run(gm, { t: "mapMoveParty", key: "3,2", travel: true });
+    expect(state.map.party).toBe("3,2");
+    expect(state.map.hexes["3,2"].revealed).toBe(true);
+    expect(state.clock.mode).toBe("wilderness");
+    expect((state.clock.watch - before.watch + 4) % 4).toBe(2);
+    expect(state.log.some((e) => e.title === "Discovered: Owl Hill")).toBe(true);
+  });
+
+  it("showing a scene switches the stage away from the map", () => {
+    const { state, run } = setup();
+    run(gm, { t: "setStageView", view: "map" });
+    expect(state.stage.view).toBe("map");
+    run(gm, { t: "saveScene", scene: { id: "s", title: "T", backdrop: "meadow", ambience: "meadow", npcs: [], notes: "" } });
+    run(gm, { t: "showScene", id: "s" });
+    expect(state.stage.view).toBe("scene");
+  });
+
+  it("rerolling a hex type also rerolls its landmark from the matching table", () => {
+    const { state, run } = setup();
+    run(gm, { t: "mapGenerate", cols: 3, rows: 3 });
+    run(gm, { t: "mapRollHex", key: "0,0", part: "type" }, scriptedRng([6, 6], [3, 20]));
+    expect(state.map.hexes["0,0"].type).toBe("town");
+    expect(state.map.hexes["0,0"].landmark).toBe("Blackberry hedge");
+  });
+});

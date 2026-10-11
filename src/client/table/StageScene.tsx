@@ -4,6 +4,9 @@ import { WATCH_NAMES, type Clock, type StageState } from "../../shared/state";
 import { play } from "../fx/sfx";
 import { Icon } from "../Icon";
 import type { IconName } from "../icons.gen";
+import { useShallow } from "zustand/react/shallow";
+import { HexMap } from "../map/HexMap";
+import { useRoom } from "../room";
 import { NpcPortrait } from "../sheet/NpcPortrait";
 
 const WATCH_TINT = [
@@ -13,8 +16,9 @@ const WATCH_TINT = [
   "bg-[#c2551c]/25 mix-blend-multiply", // evening
 ];
 
-/** Painted backdrop (or drawn mood) with a slow drift and the time of day laid over it. */
+/** Painted backdrop, drawn mood, or the hex map, with the time of day laid over it. */
 export function Backdrop({ stage, clock }: { stage: StageState; clock: Clock }) {
+  if (stage.view === "map") return <MapBackdrop clock={clock} />;
   const id = stage.scene?.backdrop;
   const def = id ? backdropById(id) : undefined;
   const url = def?.src ?? (id?.startsWith("https://") ? id : undefined);
@@ -38,6 +42,24 @@ export function Backdrop({ stage, clock }: { stage: StageState; clock: Clock }) 
   );
 }
 
+function MapBackdrop({ clock }: { clock: Clock }) {
+  const map = useRoom((s) => s.state!.map);
+  const mice = useRoom(useShallow((s) => Object.values(s.state?.mice ?? {}).filter((m) => !m.dead)));
+  return (
+    <div className="animate-fade-in absolute inset-0 bg-[radial-gradient(ellipse_at_center,#efe2c4_0%,#cdb88f_70%,#9c835a_100%)]">
+      <div className="absolute inset-0 flex items-center justify-center px-4 pt-16 pb-24">
+        {Object.keys(map.hexes).length || map.party ? (
+          <HexMap map={map} season={clock.season} party={mice} className="h-full max-h-full w-full max-w-full drop-shadow-[0_6px_10px_rgba(60,40,20,0.35)]" />
+        ) : (
+          <p className="font-display text-3xl text-ink/50">The map is still blank…</p>
+        )}
+      </div>
+      <div className={`pointer-events-none absolute inset-0 transition-colors duration-[2000ms] ${WATCH_TINT[clock.watch] ?? ""}`} />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_55%,rgba(60,35,10,0.45)_100%)]" />
+    </div>
+  );
+}
+
 /** Big chapter-style title when a scene is first shown; a small label afterwards. */
 export function SceneTitle({ stage }: { stage: StageState }) {
   const scene = stage.scene;
@@ -53,7 +75,7 @@ export function SceneTitle({ stage }: { stage: StageState }) {
     return () => clearTimeout(t);
   }, [scene?.shownAt]);
 
-  if (!scene) return null;
+  if (!scene || stage.view === "map") return null;
   if (fresh) {
     return (
       <div className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center text-center text-parchment">

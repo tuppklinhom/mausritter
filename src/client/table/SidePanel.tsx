@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { GmConsole } from "../gm/GmConsole";
+import { MapEditor } from "../gm/MapEditor";
 import { useRoom } from "../room";
 import { CreatureSheet } from "../sheet/CreatureSheet";
 import { MouseCreator } from "../sheet/MouseCreator";
@@ -8,14 +9,14 @@ import { Btn } from "../ui";
 import { PartyPanel } from "./PartyPanel";
 import { RollLog } from "./RollLog";
 
-type Tab = "direct" | "mouse" | "party" | "log";
+type Tab = "direct" | "map" | "mouse" | "party" | "log";
 
 export function SidePanel() {
   const role = useRoom((s) => s.you?.role);
   const [tab, setTab] = useState<Tab>(() => (role === "gm" ? "direct" : "mouse"));
 
   const tabs: [Tab, string][] = [
-    ...(role === "gm" ? ([["direct", "Direct"]] as [Tab, string][]) : []),
+    ...(role === "gm" ? ([["direct", "Direct"], ["map", "Map"]] as [Tab, string][]) : []),
     ["mouse", role === "gm" ? "My mice" : "My mouse"],
     ["party", "Party"],
     ["log", "Chronicle"],
@@ -36,6 +37,7 @@ export function SidePanel() {
       </nav>
       <div className="min-h-0 flex-1 overflow-y-auto p-3">
         {tab === "direct" && role === "gm" && <GmConsole />}
+        {tab === "map" && role === "gm" && <MapEditor />}
         {tab === "mouse" && <MyMice />}
         {tab === "party" && <PartyPanel />}
         {tab === "log" && <RollLog />}

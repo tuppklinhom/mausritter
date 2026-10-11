@@ -1,3 +1,4 @@
+import type { HexType } from "./data/hexcrawl";
 import type { MouseRoll } from "./rules/character";
 import type { Hireling, Mouse } from "./rules/types";
 
@@ -63,6 +64,8 @@ export interface SceneDef {
 
 /** What everyone's stage is showing right now. */
 export interface StageState {
+  /** Scene backdrop, or the hex map. */
+  view: "scene" | "map";
   scene: { id: string; title: string; subtitle?: string; backdrop: string; npcs: Npc[]; shownAt: number } | null;
   ambience: string;
   dialogue: { npc: Npc; text: string; at: number } | null;
@@ -79,6 +82,29 @@ export interface Clock {
   turn: number;
   mode: "dungeon" | "wilderness";
   season: Season;
+}
+
+export interface Hex {
+  col: number;
+  row: number;
+  type: HexType;
+  /** Short label shown on the map, e.g. "Stumpsville". */
+  name?: string;
+  landmark?: string;
+  detail?: string;
+  /** Takes two watches to cross (streams, roads, rocks, hills). */
+  difficult?: boolean;
+  revealed: boolean;
+  /** GM-only; stripped for players. */
+  notes?: string;
+}
+
+/** A hexcrawl of one-mile hexes in "odd-r" offset layout, keyed "col,row". */
+export interface MapState {
+  cols: number;
+  rows: number;
+  hexes: Record<string, Hex>;
+  party: string | null;
 }
 
 /** GM-only campaign data, stripped before state goes to players. */
@@ -98,6 +124,7 @@ export interface CampaignState {
   log: LogEntry[];
   stage: StageState;
   clock: Clock;
+  map: MapState;
   /** Present on the server and for the GM; absent in what players receive. */
   gm?: GmState;
 }
@@ -115,22 +142,29 @@ export function emptyCampaign(code: string, now = Date.now()): CampaignState {
     hirelings: {},
     drafts: {},
     log: [],
-    stage: { scene: null, ambience: "none", dialogue: null },
+    stage: { view: "scene", scene: null, ambience: "none", dialogue: null },
+    map: { cols: 5, rows: 5, hexes: {}, party: null },
     clock: { day: 1, watch: 1, turn: 0, mode: "dungeon", season: "spring" },
     gm: { scenes: [], notes: "" },
   };
 }
 
-/** What a player is allowed to see: everything except the GM's prep. */
+/** What a player is allowed to see: no GM prep, no hexes still under fog, no hex notes. */
 export function publicView(s: CampaignState): CampaignState {
   const { gm: _gm, ...rest } = s;
-  return rest;
+  const hexes: Record<string, Hex> = {};
+  for (const [k, h] of Object.entries(s.map.hexes)) {
+    if (!h.revealed) continue;
+    const { notes: _n, ...shown } = h;
+    hexes[k] = shown;
+  }
+  return { ...rest, map: { ...s.map, hexes } };
 }
 
 /** Older saved rooms predate some fields; fill them in on load. */
 export function migrateCampaign(s: CampaignState): CampaignState {
   const base = emptyCampaign(s.code, s.createdAt);
-  const merged = { ...base, ...s, gm: { ...base.gm!, ...s.gm } };
+  const merged = { ...base, ...s, gm: { ...base.gm!, ...s.gm }, stage: { ...base.stage, ...s.stage } };
   merged.log = merged.log.map((e) => ({ ...e, kind: e.kind ?? "roll", title: e.title ?? (e as { expr?: string }).expr ?? "Roll" }));
   return merged;
 }

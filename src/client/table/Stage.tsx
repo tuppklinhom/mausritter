@@ -87,12 +87,12 @@ export function Stage() {
 
       <PartyHud highlight={spot?.subjectId} hurt={phase === "settled" && (spot?.kind === "damage" || spot?.outcome === "critical") ? spot.subjectId : undefined} />
 
-      <div className="relative flex flex-1 flex-col items-center justify-end gap-2 p-4 pb-3">
+      <div className="pointer-events-none relative flex flex-1 flex-col items-center justify-end gap-2 p-4 pb-3 [&>*]:pointer-events-auto">
         {spot ? (
           phase !== "rolling" && (
             <div
               key={spot.id}
-              className={`flex max-w-xl flex-col items-center rounded-xl bg-black/45 px-6 py-4 text-center text-parchment backdrop-blur-[2px] transition-opacity duration-1000 ${phase === "faded" ? "pointer-events-none opacity-0" : ""}`}
+              className={`flex max-w-xl flex-col items-center rounded-xl bg-black/45 px-6 py-4 text-center text-parchment backdrop-blur-[2px] transition-all duration-1000 ${phase === "faded" ? "invisible opacity-0" : ""}`}
             >
               {showFlat && spot.dice && spot.dice.length > 0 && (
                 <div className="mb-2 flex flex-wrap justify-center gap-2">
@@ -124,7 +124,7 @@ export function Stage() {
             </div>
           )
         ) : (
-          !stage?.scene && <p className="mb-auto self-center pt-24 font-display text-3xl text-parchment/40">The table awaits…</p>
+          !stage?.scene && stage?.view !== "map" && <p className="mb-auto self-center pt-24 font-display text-3xl text-parchment/40">The table awaits…</p>
         )}
         {stage && <DialogueBox stage={stage} />}
       </div>
@@ -145,7 +145,7 @@ function PartyHud({ highlight, hurt }: { highlight?: string; hurt?: string }) {
   const mice = useRoom(useShallow((s) => Object.values(s.state?.mice ?? {})));
   if (mice.length === 0) return null;
   return (
-    <div className="relative flex flex-wrap gap-2 p-2">
+    <div className="pointer-events-none relative flex flex-wrap gap-2 p-2">
       {mice.map((m) => (
         <div
           key={m.id}
