@@ -192,7 +192,9 @@ export function CardTile({ card, small, lifted, onUsage }: { card: CardInstance;
     <div
       className={`relative flex h-full flex-col rounded-md border-2 bg-[#fbf6ea] px-1.5 py-1 text-ink shadow transition ${
         isCondition ? "border-ember/70 bg-[#fbe9e2]" : "border-ink/70"
-      } ${lifted ? "rotate-2 scale-105 shadow-2xl" : "hover:-translate-y-0.5 hover:shadow-md"} ${spent ? "grayscale" : ""} ${small ? "min-h-14" : ""}`}
+      } ${lifted ? "rotate-2 scale-105 shadow-2xl" : "hover:-translate-y-0.5 hover:shadow-md"} ${spent ? "grayscale" : ""} ${small ? "min-h-14" : ""} ${
+        card.lit ? "animate-flicker border-gold" : ""
+      }`}
     >
       <div className={`truncate font-display leading-tight ${small ? "text-sm" : "text-base"}`} title={card.name}>
         {card.name}

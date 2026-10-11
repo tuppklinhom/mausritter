@@ -1,7 +1,7 @@
 import { Server, type Connection, type ConnectionContext, type WSMessage } from "partyserver";
 import { Action, ActionError, applyAction } from "../shared/actions";
 import type { ServerMessage } from "../shared/protocol";
-import { emptyCampaign, migrateCampaign, type CampaignState, type Role } from "../shared/state";
+import { emptyCampaign, migrateCampaign, publicView, type CampaignState, type Role } from "../shared/state";
 
 interface ConnState {
   pid: string;
@@ -89,8 +89,13 @@ export class CampaignRoom extends Server<Env> {
     return [...ids];
   }
 
+  /** Sends each connection the state it may see: the GM gets their prep, players don't. */
   private broadcastState() {
-    if (this.state) this.broadcastMsg({ t: "state", state: this.state, online: this.online() });
+    if (!this.state) return;
+    const online = this.online();
+    const forPlayers = JSON.stringify({ t: "state", state: publicView(this.state), online } satisfies ServerMessage);
+    const forGm = JSON.stringify({ t: "state", state: this.state, online } satisfies ServerMessage);
+    for (const c of this.getConnections<ConnState>()) c.send(c.state?.role === "gm" ? forGm : forPlayers);
   }
 
   private broadcastMsg(msg: ServerMessage) {

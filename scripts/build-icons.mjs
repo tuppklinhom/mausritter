@@ -17,6 +17,14 @@ const NAMES = [
   "sleepy", "terror", "stomach", "broken-bone", "brain-leak", "hazard-sign",
   // ui
   "crossed-swords", "dice-twenty-faces-twenty", "campfire", "hearts", "sparkles",
+  // creatures (NPC medallions)
+  "cat", "owl", "frog", "toad-teeth", "spider-face", "centipede", "snake", "raven", "rat", "scarab-beetle",
+  "fairy", "ghost", "bat", "fox-head", "earth-worm", "hood", "bee", "ant", "hedgehog", "lizard-tongue",
+  "squirrel", "rabbit-head", "mole", "dragonfly", "snail", "butterfly", "heron", "badger", "cultist",
+  "wizard-face", "crown",
+  // time & weather
+  "sun", "moon", "sunrise", "sunset", "night-sky", "raining", "snowing", "sun-cloud", "falling-leaf",
+  "flowers", "hourglass", "footprint", "cave-entrance", "whirlwind",
 ];
 
 const size = set.width ?? 512;

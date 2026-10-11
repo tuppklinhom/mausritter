@@ -68,6 +68,7 @@ export function CardMenu({ creature, layout, uid, editable, onClose }: Props) {
             </p>
           )}
           {inGrit && <p className="text-moss">Held in Grit — ignored until cleared.</p>}
+          {card.lit && <p className="font-bold text-ember">Lit · {card.burn ?? 0}/6 turns toward the next usage mark</p>}
         </div>
       </div>
 
@@ -93,6 +94,11 @@ export function CardMenu({ creature, layout, uid, editable, onClose }: Props) {
           )}
 
           <div className="flex flex-wrap gap-2">
+            {card.kind === "light" && (
+              <Btn tone={card.lit ? "plain" : "gold"} onClick={act(() => send({ t: "toggleLight", creatureId: creature.id, uid }))} disabled={!card.lit && remaining === 0}>
+                {card.lit ? "Put out" : "🔥 Light it"}
+              </Btn>
+            )}
             {rotated && (
               <Btn onClick={act(() => send({ t: "moveCard", creatureId: creature.id, uid, anchor: cells[0], vertical: !card.vertical }))}>⟳ Rotate</Btn>
             )}

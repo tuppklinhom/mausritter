@@ -50,6 +50,9 @@ export interface CardInstance {
   /** For two-slot cards: true = spans two rows (vertical), false = two columns. */
   vertical?: boolean;
   note?: string;
+  /** Light sources: currently lit, and turns burned since usage was last marked (0–5). */
+  lit?: boolean;
+  burn?: number;
 }
 
 export type Zone = "paw" | "body" | "pack";

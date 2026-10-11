@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { navigate } from "../App";
+import { setAmbience } from "../fx/ambience";
 import { FxDirector } from "../fx/FxDirector";
 import { useRoom } from "../room";
 import { saveName, savedName } from "../session";
@@ -81,8 +82,19 @@ export function Table({ code }: { code: string }) {
       )}
       <Toast />
       <FxDirector />
+      <AmbienceDirector />
     </div>
   );
+}
+
+/** Plays whatever soundscape the GM has set for the stage. */
+function AmbienceDirector() {
+  const ambience = useRoom((s) => s.state?.stage.ambience ?? "none");
+  useEffect(() => {
+    setAmbience(ambience);
+  }, [ambience]);
+  useEffect(() => () => setAmbience("none"), []);
+  return null;
 }
 
 function Toast() {

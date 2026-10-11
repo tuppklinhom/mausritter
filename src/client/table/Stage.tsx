@@ -6,6 +6,7 @@ import { play, type Sfx } from "../fx/sfx";
 import { useRoom } from "../room";
 import { MousePortrait } from "../sheet/MousePortrait";
 import { Bar } from "../ui";
+import { Backdrop, ClockBadge, DialogueBox, SceneTitle } from "./StageScene";
 
 const BANNER: Record<Outcome, { text: string; cls: string }> = {
   success: { text: "Success", cls: "text-[#a6d27a]" },
@@ -14,7 +15,13 @@ const BANNER: Record<Outcome, { text: string; cls: string }> = {
   dead: { text: "Slain", cls: "text-[#d9d0c0]" },
   levelup: { text: "Level up!", cls: "text-gold" },
   depleted: { text: "Broken!", cls: "text-gold" },
+  encounter: { text: "Encounter!", cls: "text-ember" },
+  omen: { text: "An omen…", cls: "text-[#b9a6e8]" },
+  quiet: { text: "All quiet", cls: "text-parchment/70" },
 };
+
+/** How long a settled roll stays up before the scene shows through again. */
+const READOUT_MS = 7000;
 
 const DICE_STAGE = "dice-stage";
 
@@ -25,22 +32,26 @@ function sfxFor(e: LogEntry): Sfx | null {
   return null;
 }
 
-type Phase = "idle" | "rolling" | "flat" | "settled";
+type Phase = "idle" | "rolling" | "flat" | "settled" | "faded";
 
 /** The shared screen everyone watches. */
 export function Stage() {
   const spot = useRoom((s) => s.spotlight);
+  const stage = useRoom((s) => s.state?.stage);
+  const clock = useRoom((s) => s.state?.clock);
   const recent = useRoom(useShallow((s) => (s.state?.log ?? []).slice(-4)));
   const [phase, setPhase] = useState<Phase>("idle");
 
   useEffect(() => {
     if (!spot) return;
     let cancelled = false;
+    let fade: ReturnType<typeof setTimeout>;
     const settle = () => {
       if (cancelled) return;
       setPhase("settled");
       const s = sfxFor(spot);
       if (s) play(s);
+      fade = setTimeout(() => !cancelled && setPhase("faded"), READOUT_MS);
     };
     if (spot.dice?.length) {
       setPhase("rolling");
@@ -58,6 +69,7 @@ export function Stage() {
     }
     return () => {
       cancelled = true;
+      clearTimeout(fade);
     };
   }, [spot]);
 
@@ -66,16 +78,22 @@ export function Stage() {
   const showFlat = phase === "flat" || phase === "settled";
 
   return (
-    <div className={`relative flex flex-1 flex-col overflow-hidden bg-[radial-gradient(ellipse_at_center,#4a3828_0%,#1c140d_75%)] ${shake ? "animate-shake" : ""}`}>
+    <div className={`relative flex flex-1 flex-col overflow-hidden bg-[#1c140d] ${shake ? "animate-shake" : ""}`}>
+      {stage && clock && <Backdrop stage={stage} clock={clock} />}
       {/* The 3D dice roll across the whole stage, under the HUD and readout. */}
       <div id={DICE_STAGE} className="pointer-events-none absolute inset-0" />
+      {stage && <SceneTitle stage={stage} />}
+      {clock && <ClockBadge clock={clock} />}
 
       <PartyHud highlight={spot?.subjectId} hurt={phase === "settled" && (spot?.kind === "damage" || spot?.outcome === "critical") ? spot.subjectId : undefined} />
 
-      <div className="relative flex flex-1 items-end justify-center p-4 pb-10">
+      <div className="relative flex flex-1 flex-col items-center justify-end gap-2 p-4 pb-3">
         {spot ? (
           phase !== "rolling" && (
-            <div key={spot.id} className="flex max-w-xl flex-col items-center rounded-xl bg-black/35 px-6 py-4 text-center text-parchment backdrop-blur-[2px]">
+            <div
+              key={spot.id}
+              className={`flex max-w-xl flex-col items-center rounded-xl bg-black/45 px-6 py-4 text-center text-parchment backdrop-blur-[2px] transition-opacity duration-1000 ${phase === "faded" ? "pointer-events-none opacity-0" : ""}`}
+            >
               {showFlat && spot.dice && spot.dice.length > 0 && (
                 <div className="mb-2 flex flex-wrap justify-center gap-2">
                   {spot.dice.map((d, i) => (
@@ -93,21 +111,22 @@ export function Stage() {
                   ))}
                 </div>
               )}
-              {phase === "settled" && (
+              {(phase === "settled" || phase === "faded") && (
                 <div className="animate-pop">
                   {spot.total !== undefined && <div className="font-display text-7xl leading-none drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)]">{spot.total}</div>}
                   <div className="mt-1 text-xl">{spot.title}</div>
                   {spot.detail && <div className="mt-1 text-sm opacity-75">{spot.detail}</div>}
                 </div>
               )}
-              {phase === "settled" && banner && (
+              {(phase === "settled" || phase === "faded") && banner && (
                 <div className={`animate-stamp mt-2 font-display text-6xl tracking-wide drop-shadow-[0_4px_10px_rgba(0,0,0,0.9)] ${banner.cls}`}>{banner.text}</div>
               )}
             </div>
           )
         ) : (
-          <p className="mb-auto self-center pt-24 font-display text-3xl text-parchment/40">The table awaits…</p>
+          !stage?.scene && <p className="mb-auto self-center pt-24 font-display text-3xl text-parchment/40">The table awaits…</p>
         )}
+        {stage && <DialogueBox stage={stage} />}
       </div>
 
       <ol className="pointer-events-none absolute bottom-2 left-3 hidden max-w-sm space-y-0.5 text-sm text-parchment/70 xl:block">

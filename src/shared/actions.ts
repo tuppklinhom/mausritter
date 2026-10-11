@@ -24,11 +24,32 @@ import {
 } from "./rules/inventory";
 import { saveFor, type SaveMode } from "./rules/saves";
 import { castSpell } from "./rules/spells";
+import { advanceClock, burnLights, rollEncounter, type EncounterRoll } from "./rules/time";
+import { AMBIENCES, backdropById } from "./data/scenes";
 import type { CardInstance, Creature, InventoryLayout, Mouse, Stat } from "./rules/types";
-import { LOG_LIMIT, type CampaignState, type DieFace, type LogEntry, type Member } from "./state";
+import { LOG_LIMIT, TURNS_PER_WATCH, WATCH_NAMES, type CampaignState, type DieFace, type GmState, type LogEntry, type Member } from "./state";
 
 const id = z.string().min(1).max(64);
 const stat = z.enum(["str", "dex", "wil"]);
+
+const NpcSchema = z.object({
+  id,
+  name: z.string().trim().min(1).max(40),
+  look: z.discriminatedUnion("kind", [
+    z.object({ kind: z.literal("mouse"), color: z.string().max(20), pattern: z.string().max(20) }),
+    z.object({ kind: z.literal("creature"), icon: z.string().max(40), tint: z.string().regex(/^#[0-9a-f]{6}$/i) }),
+  ]),
+});
+
+const SceneSchema = z.object({
+  id,
+  title: z.string().trim().min(1).max(60),
+  subtitle: z.string().trim().max(120).optional(),
+  backdrop: z.string().refine((b) => !!backdropById(b) || /^https:\/\/[^\s"'<>()]{1,500}$/.test(b), "Pick a backdrop or paste an https image link"),
+  ambience: z.string().refine((a) => AMBIENCES.some((x) => x.id === a), "Unknown ambience"),
+  npcs: z.array(NpcSchema).max(12),
+  notes: z.string().max(5000),
+});
 
 export const Action = z.discriminatedUnion("t", [
   z.object({ t: z.literal("roll"), expr: z.string().max(40), label: z.string().max(60).optional() }),
@@ -73,6 +94,30 @@ export const Action = z.discriminatedUnion("t", [
   // Hirelings
   z.object({ t: z.literal("hire"), creatureId: id, type: z.string().trim().min(1).max(40) }),
   z.object({ t: z.literal("dismissHireling"), creatureId: id }),
+
+  // Light & time
+  z.object({ t: z.literal("toggleLight"), creatureId: id, uid: id }),
+  z.object({ t: z.literal("advanceTime"), turns: z.number().int().min(1).max(TURNS_PER_WATCH * 4) }),
+  z.object({ t: z.literal("rollEncounter") }),
+  z.object({
+    t: z.literal("setClock"),
+    mode: z.enum(["dungeon", "wilderness"]).optional(),
+    season: z.enum(["spring", "summer", "autumn", "winter"]).optional(),
+    day: z.number().int().min(1).max(10000).optional(),
+    watch: z.number().int().min(0).max(3).optional(),
+    turn: z.number().int().min(0).max(TURNS_PER_WATCH - 1).optional(),
+  }),
+
+  // GM stage direction
+  z.object({ t: z.literal("saveScene"), scene: SceneSchema }),
+  z.object({ t: z.literal("deleteScene"), id }),
+  z.object({ t: z.literal("moveScene"), id, dir: z.union([z.literal(-1), z.literal(1)]) }),
+  z.object({ t: z.literal("showScene"), id }),
+  z.object({ t: z.literal("clearScene") }),
+  z.object({ t: z.literal("say"), npc: NpcSchema, text: z.string().trim().min(1).max(400) }),
+  z.object({ t: z.literal("clearDialogue") }),
+  z.object({ t: z.literal("setAmbience"), ambience: z.string() }),
+  z.object({ t: z.literal("setGmNotes"), notes: z.string().max(20000) }),
 ]);
 export type Action = z.infer<typeof Action>;
 
@@ -109,6 +154,25 @@ export function applyAction(state: CampaignState, action: Action, ctx: ActionCon
   };
 
   const isGm = actor.role === "gm";
+
+  function gmOnly(): GmState {
+    if (!isGm) fail("Only the GM can do that.");
+    state.gm ??= { scenes: [], notes: "" };
+    return state.gm;
+  }
+
+  /** Logs an encounter-die roll; the stage announces it to everyone. */
+  function logEncounter(r: EncounterRoll, when: string) {
+    const text = r.kind === "encounter" ? "Encounter!" : r.kind === "omen" ? "An omen of what's to come…" : "All quiet.";
+    log({
+      kind: "encounter",
+      title: `Encounter die · ${when}`,
+      detail: `${text}${r.hour ? ` (hour ${r.hour} of the watch)` : ""}${r.kind !== "quiet" ? " Roll for the type." : ""}`,
+      dice: [{ sides: 6, value: r.roll, kept: true }, ...(r.hour ? [{ sides: 12, value: r.hour, kept: true }] : [])],
+      total: r.roll,
+      outcome: r.kind,
+    });
+  }
 
   function creature(cid: string): { c: Creature; layout: InventoryLayout; isMouse: boolean } {
     const mouse = state.mice[cid];
@@ -548,6 +612,135 @@ export function applyAction(state: CampaignState, action: Action, ctx: ActionCon
       log({ kind: "event", title: `${c.name} leaves the party's service` });
       break;
     }
+
+    case "toggleLight": {
+      const { c } = editable(action.creatureId);
+      const light = card(c, action.uid);
+      if (light.kind !== "light") fail("Only torches and lanterns can be lit.");
+      if (!light.lit && isDepleted(light)) fail(`${light.name} are spent.`);
+      light.lit = !light.lit;
+      log({ kind: "event", title: `${c.name} ${light.lit ? "lights" : "puts out"} ${light.name}`, subjectId: c.id });
+      break;
+    }
+
+    case "advanceTime": {
+      gmOnly();
+      const adv = advanceClock(state.clock, action.turns);
+      state.clock = adv.clock;
+      const watches = action.turns / TURNS_PER_WATCH;
+      const span = Number.isInteger(watches) ? `${watches} watch${watches > 1 ? "es" : ""}` : `${action.turns} turn${action.turns > 1 ? "s" : ""}`;
+      log({
+        kind: "event",
+        title: `Time passes: ${span}`,
+        detail: `Day ${state.clock.day}, ${WATCH_NAMES[state.clock.watch]}, turn ${state.clock.turn + 1}`,
+      });
+      for (const c of [...Object.values(state.mice), ...Object.values(state.hirelings)]) {
+        for (const b of burnLights(c.inventory, action.turns)) {
+          log({
+            kind: "event",
+            title: b.burnedOut ? `${c.name}'s ${b.card.name} burn out!` : `${c.name}'s ${b.card.name} burn down (${b.marked} usage)`,
+            outcome: b.burnedOut ? "depleted" : undefined,
+            subjectId: c.id,
+          });
+        }
+      }
+      if (adv.dungeonChecks > 0) {
+        const rolls = Array.from({ length: adv.dungeonChecks }, () => rollEncounter(false, rng));
+        const worst = rolls.find((r) => r.kind === "encounter") ?? rolls.find((r) => r.kind === "omen") ?? rolls[0];
+        if (rolls.length === 1) logEncounter(worst, "every 3 turns");
+        else
+          log({
+            kind: "encounter",
+            title: `Encounter die × ${rolls.length}`,
+            detail:
+              worst.kind === "encounter"
+                ? "Encounter! Roll for the type."
+                : worst.kind === "omen"
+                  ? "An omen of what's to come… Roll for the type."
+                  : "All quiet.",
+            dice: rolls.slice(-12).map((r) => ({ sides: 6, value: r.roll, kept: r === worst })),
+            total: worst.roll,
+            outcome: worst.kind,
+          });
+      }
+      for (const when of adv.wildernessChecks) logEncounter(rollEncounter(true, rng), when);
+      break;
+    }
+
+    case "rollEncounter":
+      gmOnly();
+      logEncounter(rollEncounter(state.clock.mode === "wilderness", rng), "called by the GM");
+      break;
+
+    case "setClock": {
+      gmOnly();
+      const { t: _t, ...patch } = action;
+      for (const [k, v] of Object.entries(patch)) if (v !== undefined) Object.assign(state.clock, { [k]: v });
+      break;
+    }
+
+    case "saveScene": {
+      const gm = gmOnly();
+      const i = gm.scenes.findIndex((s) => s.id === action.scene.id);
+      if (i >= 0) gm.scenes[i] = action.scene;
+      else gm.scenes.push(action.scene);
+      // Edits to the scene on screen show up straight away.
+      if (state.stage.scene?.id === action.scene.id) {
+        const { notes: _n, ambience: _a, ...shown } = action.scene;
+        state.stage.scene = { ...shown, shownAt: state.stage.scene.shownAt };
+      }
+      break;
+    }
+
+    case "deleteScene": {
+      const gm = gmOnly();
+      gm.scenes = gm.scenes.filter((s) => s.id !== action.id);
+      break;
+    }
+
+    case "moveScene": {
+      const gm = gmOnly();
+      const i = gm.scenes.findIndex((s) => s.id === action.id);
+      const j = i + action.dir;
+      if (i < 0 || j < 0 || j >= gm.scenes.length) break;
+      [gm.scenes[i], gm.scenes[j]] = [gm.scenes[j], gm.scenes[i]];
+      break;
+    }
+
+    case "showScene": {
+      const gm = gmOnly();
+      const scene = gm.scenes.find((s) => s.id === action.id) ?? fail("That scene is gone.");
+      const { notes: _n, ambience, ...shown } = scene;
+      state.stage = { scene: { ...shown, shownAt: now }, ambience, dialogue: null };
+      log({ kind: "event", title: `Scene: ${scene.title}`, detail: scene.subtitle });
+      break;
+    }
+
+    case "clearScene":
+      gmOnly();
+      state.stage = { ...state.stage, scene: null, dialogue: null };
+      break;
+
+    case "say":
+      gmOnly();
+      state.stage.dialogue = { npc: action.npc, text: action.text, at: now };
+      log({ kind: "event", title: `${action.npc.name}: “${action.text}”` });
+      break;
+
+    case "clearDialogue":
+      gmOnly();
+      state.stage.dialogue = null;
+      break;
+
+    case "setAmbience":
+      gmOnly();
+      if (!AMBIENCES.some((a) => a.id === action.ambience)) fail("Unknown ambience.");
+      state.stage.ambience = action.ambience;
+      break;
+
+    case "setGmNotes":
+      gmOnly().notes = action.notes;
+      break;
   }
 
   state.log.push(...events);

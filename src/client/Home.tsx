@@ -70,7 +70,7 @@ export function Home() {
       </div>
       <footer className="absolute bottom-3 max-w-xl px-4 text-center text-xs text-parchment/50">
         Mausritter by Isaac Williams · Icons by Lorc, Delapouite & contributors at game-icons.net (CC BY 3.0) · 3D dice by
-        dice-box-threejs (MIT)
+        dice-box-threejs (MIT) · Backdrops by rubberduck & Spring Spring (CC0)
       </footer>
     </main>
   );

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { ActionError, applyAction, type Action } from "./actions";
+import { Action, ActionError, applyAction } from "./actions";
 import { scriptedRng, type Rng } from "./rules/dice";
 import { cellsOf } from "./rules/inventory";
-import { emptyCampaign, type CampaignState, type Member } from "./state";
+import { emptyCampaign, publicView, type CampaignState, type Member } from "./state";
 
 const gm: Member = { id: "gm", name: "GM", role: "gm" };
 const pip: Member = { id: "pip", name: "Pip", role: "player" };
@@ -182,5 +182,84 @@ describe("spells", () => {
     expect(tablet.used).toBe(2);
     expect(m.stats.wil.cur).toBe(7);
     expect(ev.map((e) => e.kind)).toEqual(["spell", "damage", "save"]);
+  });
+});
+
+describe("GM stage direction", () => {
+  const scene = {
+    id: "s1",
+    title: "The Rotting Granary",
+    subtitle: "Something skitters in the dark",
+    backdrop: "mood:tunnel",
+    ambience: "cave",
+    npcs: [{ id: "n1", name: "Old Wick", look: { kind: "mouse" as const, color: "Grey", pattern: "Solid" } }],
+    notes: "The rats are behind the third sack.",
+  };
+
+  it("only the GM can prepare and show scenes", () => {
+    const { run } = setup();
+    expect(() => run(pip, { t: "saveScene", scene })).toThrow("Only the GM");
+    expect(() => run(pip, { t: "advanceTime", turns: 1 })).toThrow("Only the GM");
+  });
+
+  it("showing a scene puts it on stage without the GM's notes", () => {
+    const { state, run } = setup();
+    run(gm, { t: "saveScene", scene });
+    run(gm, { t: "showScene", id: "s1" });
+    expect(state.stage.scene?.title).toBe("The Rotting Granary");
+    expect(state.stage.ambience).toBe("cave");
+    expect(JSON.stringify(state.stage)).not.toContain("third sack");
+  });
+
+  it("players never receive the GM's prep", () => {
+    const { state, run } = setup();
+    run(gm, { t: "saveScene", scene });
+    run(gm, { t: "setGmNotes", notes: "Secret plans" });
+    const seen = JSON.stringify(publicView(state));
+    expect(seen).not.toContain("third sack");
+    expect(seen).not.toContain("Secret plans");
+    expect(state.gm?.scenes).toHaveLength(1);
+  });
+
+  it("rejects backdrops that aren't bundled or https links", () => {
+    expect(Action.safeParse({ t: "saveScene", scene: { ...scene, backdrop: "javascript:alert(1)" } }).success).toBe(false);
+    expect(Action.safeParse({ t: "saveScene", scene: { ...scene, backdrop: "https://example.com/a.jpg" } }).success).toBe(true);
+  });
+
+  it("NPCs speak on stage", () => {
+    const { state, run } = setup();
+    run(gm, { t: "say", npc: scene.npcs[0], text: "Mind the cat." });
+    expect(state.stage.dialogue?.text).toBe("Mind the cat.");
+    run(gm, { t: "clearDialogue" });
+    expect(state.stage.dialogue).toBeNull();
+  });
+});
+
+describe("time and light", () => {
+  it("advancing turns burns lit torches and rolls the encounter die every 3 turns", () => {
+    const { state, run } = setup();
+    const m = makeMouse(run, state, pip);
+    const torches = Object.values(m.inventory.cards).find((c) => c.defId === "torches")!;
+    run(pip, { t: "toggleLight", creatureId: m.id, uid: torches.uid });
+    expect(torches.lit).toBe(true);
+
+    const ev = run(gm, { t: "advanceTime", turns: 6 }, scriptedRng([2, 6], [5, 6]));
+    expect(torches.used).toBe(1);
+    expect(state.clock.turn).toBe(6);
+    const enc = ev.filter((e) => e.kind === "encounter");
+    expect(enc).toHaveLength(1);
+    expect(enc[0].outcome).toBe("omen");
+    expect(enc[0].dice).toHaveLength(2);
+  });
+
+  it("the wilderness checks at sunset", () => {
+    const { state, run } = setup();
+    run(gm, { t: "setClock", mode: "wilderness", watch: 2, turn: 0 });
+    const ev = run(gm, { t: "advanceTime", turns: 36 }, scriptedRng([1, 6], [9, 12]));
+    expect(state.clock.watch).toBe(3);
+    const enc = ev.find((e) => e.kind === "encounter")!;
+    expect(enc.title).toContain("sunset");
+    expect(enc.outcome).toBe("encounter");
+    expect(enc.detail).toContain("hour 9");
   });
 });

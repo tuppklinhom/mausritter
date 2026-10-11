@@ -33,17 +33,18 @@ test("GM and a player share a table: create a mouse, take damage, rearrange gear
   await expect(player.locator("aside").getByText("Sword", { exact: true })).toBeVisible();
 
   // The GM sees the new mouse in the party and on the stage HUD
+  await gm.getByRole("button", { name: "Party", exact: true }).click();
   await expect(gm.locator("aside").getByText(mouseName)).toBeVisible();
   await expect(gm.locator("section").getByText(mouseName).first()).toBeVisible();
 
-  // GM opens the mouse and deals 1 damage; player's HP drops by one
-  const hpBefore = await player.locator("aside").getByText(/^\d+\/\d+$/).nth(3).innerText().catch(() => "");
+  // GM opens the mouse and deals 1 damage; player's HP drops by one (unless armour absorbs it)
+  const hp = player.getByTestId("score-HP").first();
+  const [cur, max] = (await hp.innerText()).split("/").map(Number);
   await gm.locator("aside").getByText(mouseName).click();
   await gm.getByPlaceholder("dmg").first().fill("1");
   await gm.getByRole("button", { name: "Take damage" }).first().click();
-  await expect(player.locator("aside").getByText(/takes 1 damage|takes 0 damage/)).toHaveCount(0); // log lives in Chronicle tab
   await expect(player.getByText(new RegExp(`${mouseName} takes [01] damage`)).first()).toBeVisible();
-  expect(hpBefore).not.toBe("");
+  await expect(hp).toHaveText(new RegExp(`^(${cur}|${cur - 1})/${max}$`));
 
   // Player drags Torches into pack slot 6
   const torches = player.locator("aside").getByText("Torches", { exact: true });

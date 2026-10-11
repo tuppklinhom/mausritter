@@ -5,7 +5,7 @@ import { useRoom } from "../room";
 export function PartyBar({ code }: { code: string }) {
   const { state, online, you, status } = useRoom();
   const [copied, setCopied] = useState(false);
-  const { muted, dice3d, toggleMute, toggleDice3d } = useFx();
+  const { muted, dice3d, ambienceVolume, toggleMute, toggleDice3d, setAmbienceVolume } = useFx();
 
   async function copyInvite() {
     try {
@@ -33,10 +33,23 @@ export function PartyBar({ code }: { code: string }) {
       </button>
       {status !== "open" && <span className="text-sm text-gold">{status === "connecting" ? "connecting…" : "reconnecting…"}</span>}
 
-      <div className="flex gap-1">
+      <div className="flex items-center gap-1">
         <button onClick={toggleMute} title={muted ? "Sound off" : "Sound on"} className="rounded px-2 py-0.5 hover:bg-white/10" aria-label={muted ? "Unmute" : "Mute"}>
           {muted ? "🔇" : "🔊"}
         </button>
+        <label className="flex items-center gap-1 text-xs opacity-80" title="Ambience volume">
+          ♪
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.05}
+            value={ambienceVolume}
+            onChange={(e) => setAmbienceVolume(Number(e.target.value))}
+            className="w-16 accent-gold"
+            aria-label="Ambience volume"
+          />
+        </label>
         <button onClick={toggleDice3d} title={dice3d ? "3D dice on" : "3D dice off"} className={`rounded px-2 py-0.5 text-sm hover:bg-white/10 ${dice3d ? "" : "opacity-50 line-through"}`}>
           3D dice
         </button>

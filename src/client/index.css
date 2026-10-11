@@ -87,6 +87,46 @@ body {
   20% { box-shadow: 0 0 24px rgba(196, 87, 42, 0.95); background-color: rgb(160 40 20 / 0.75); }
 }
 
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes drift {
+  from { transform: scale(1.06) translate(-1%, 0.5%); }
+  to { transform: scale(1.14) translate(1.5%, -1%); }
+}
+
+@keyframes title {
+  0% { opacity: 0; transform: scale(0.92); letter-spacing: 0.02em; }
+  15% { opacity: 1; transform: scale(1); }
+  80% { opacity: 1; letter-spacing: 0.06em; }
+  100% { opacity: 0; transform: scale(1.04); letter-spacing: 0.08em; }
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(3px); }
+}
+
+@keyframes flicker {
+  0%, 100% { box-shadow: 0 0 10px 2px rgba(255, 170, 60, 0.75); }
+  40% { box-shadow: 0 0 16px 4px rgba(255, 190, 80, 0.9); }
+  70% { box-shadow: 0 0 8px 1px rgba(255, 150, 50, 0.6); }
+}
+
+.animate-flicker { animation: flicker 1.6s ease-in-out infinite; }
+.animate-fade-in { animation: fade-in 1.2s ease-out both; }
+.animate-drift { animation: drift 45s ease-in-out infinite alternate; }
+.animate-title { animation: title 4.2s ease-out both; }
+.animate-title-sub { animation: title 4.2s ease-out 0.3s both; }
+.animate-rise { animation: rise 0.35s ease-out both; }
+.animate-bob { animation: bob 0.9s ease-in-out infinite; }
 .animate-pop { animation: pop 0.45s cubic-bezier(0.2, 0.8, 0.3, 1.2) both; }
 .animate-hurt { animation: hurt 0.9s ease-out both; }
 .animate-shake { animation: shake 0.5s ease-in-out both; }

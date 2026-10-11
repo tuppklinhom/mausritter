@@ -1,27 +1,10 @@
+import { sharedAudio } from "./audio";
 import { useFx } from "./settings";
 
 // Small synthesized sound effects: no audio files to license or download.
 
-let ctx: AudioContext | null = null;
-
 function audio(): AudioContext | null {
-  if (useFx.getState().muted) return null;
-  try {
-    ctx ??= new AudioContext();
-    if (ctx.state === "suspended") void ctx.resume();
-    return ctx;
-  } catch {
-    return null;
-  }
-}
-
-// Browsers only allow audio after a gesture; warm the context on the first one.
-if (typeof window !== "undefined") {
-  const unlock = () => {
-    audio();
-    window.removeEventListener("pointerdown", unlock);
-  };
-  window.addEventListener("pointerdown", unlock);
+  return useFx.getState().muted ? null : sharedAudio();
 }
 
 function tone(ac: AudioContext, freq: number, start: number, dur: number, type: OscillatorType = "sine", gain = 0.18, slideTo?: number) {
@@ -54,7 +37,21 @@ function noise(ac: AudioContext, start: number, dur: number, gain = 0.25, lowpas
   src.start(ac.currentTime + start);
 }
 
-export type Sfx = "success" | "fail" | "critical" | "dead" | "levelup" | "loot" | "condition" | "hit" | "depleted" | "event";
+export type Sfx =
+  | "success"
+  | "fail"
+  | "critical"
+  | "dead"
+  | "levelup"
+  | "loot"
+  | "condition"
+  | "hit"
+  | "depleted"
+  | "event"
+  | "encounter"
+  | "omen"
+  | "quiet"
+  | "scene";
 
 export function play(sfx: Sfx) {
   const ac = audio();
@@ -98,6 +95,21 @@ export function play(sfx: Sfx) {
       break;
     case "event":
       tone(ac, 660, 0, 0.12, "sine", 0.06);
+      break;
+    case "encounter":
+      noise(ac, 0, 0.5, 0.3, 300);
+      [147, 156, 147].forEach((f, i) => tone(ac, f, i * 0.18, 0.5, "sawtooth", 0.09));
+      tone(ac, 73, 0, 1.2, "sine", 0.3);
+      break;
+    case "omen":
+      tone(ac, 466, 0, 1.4, "sine", 0.08, 440);
+      tone(ac, 494, 0.05, 1.4, "sine", 0.06, 466);
+      break;
+    case "quiet":
+      tone(ac, 392, 0, 0.5, "sine", 0.05);
+      break;
+    case "scene":
+      [262, 392, 523].forEach((f, i) => tone(ac, f, i * 0.15, 1.2, "triangle", 0.07));
       break;
   }
 }
