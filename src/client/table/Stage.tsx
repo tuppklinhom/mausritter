@@ -6,6 +6,7 @@ import { play, type Sfx } from "../fx/sfx";
 import { useRoom } from "../room";
 import { MousePortrait } from "../sheet/MousePortrait";
 import { Bar } from "../ui";
+import { CombatStage, YourTurnBanner } from "../combat/CombatStage";
 import { Backdrop, ClockBadge, DialogueBox, SceneTitle } from "./StageScene";
 
 const BANNER: Record<Outcome, { text: string; cls: string }> = {
@@ -39,6 +40,7 @@ export function Stage() {
   const spot = useRoom((s) => s.spotlight);
   const stage = useRoom((s) => s.state?.stage);
   const clock = useRoom((s) => s.state?.clock);
+  const combat = useRoom((s) => s.state?.combat);
   const recent = useRoom(useShallow((s) => (s.state?.log ?? []).slice(-4)));
   const [phase, setPhase] = useState<Phase>("idle");
 
@@ -84,6 +86,10 @@ export function Stage() {
       <div id={DICE_STAGE} className="pointer-events-none absolute inset-0" />
       {stage && <SceneTitle stage={stage} />}
       {clock && <ClockBadge clock={clock} />}
+      {combat && (
+        <CombatStage combat={combat} hurtId={phase === "settled" && (spot?.kind === "damage" || spot?.outcome === "critical") ? spot.subjectId : undefined} />
+      )}
+      {combat && <TurnAnnouncer />}
 
       <PartyHud highlight={spot?.subjectId} hurt={phase === "settled" && (spot?.kind === "damage" || spot?.outcome === "critical") ? spot.subjectId : undefined} />
 
@@ -139,6 +145,32 @@ export function Stage() {
       </ol>
     </div>
   );
+}
+
+/** Pops a "your turn" banner when one of this player's creatures comes up in the order. */
+function TurnAnnouncer() {
+  const turnKey = useRoom((s) => (s.state?.combat ? `${s.state.combat.round}-${s.state.combat.turn}` : ""));
+  const mine = useRoom((s) => {
+    const st = s.state;
+    const id = st?.combat?.order[st.combat.turn];
+    if (!st || !id || !s.you) return null;
+    const m = st.mice[id];
+    const h = st.hirelings[id];
+    const owner = m?.ownerId ?? (h ? st.mice[h.employerId]?.ownerId : undefined);
+    return owner === s.you.id ? (m ?? h) : null;
+  });
+  const [shown, setShown] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!mine) return;
+    setShown(turnKey);
+    play("success");
+    const t = setTimeout(() => setShown(null), 2600);
+    return () => clearTimeout(t);
+  }, [turnKey, mine?.id]);
+
+  if (!mine || shown !== turnKey) return null;
+  return <YourTurnBanner name={mine.name} seed={mine.id} coat={"coat" in mine ? mine.coat : undefined} />;
 }
 
 function PartyHud({ highlight, hurt }: { highlight?: string; hurt?: string }) {

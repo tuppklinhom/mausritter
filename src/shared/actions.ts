@@ -28,8 +28,10 @@ import { advanceClock, burnLights, rollEncounter, type EncounterRoll } from "./r
 import { AMBIENCES, backdropById } from "./data/scenes";
 import { HEX_TYPES, hexTypeFor } from "./data/hexcrawl";
 import { generateMap, rollDetail, rollLandmark, resizeMap } from "./rules/hexmap";
+import { creatureDef, reactionFor } from "./data/creatures";
+import { damageFoe, isActive, makeFoe, moraleCheck, rollInitiative, type FoeDamageResult } from "./rules/encounter";
 import type { CardInstance, Creature, InventoryLayout, Mouse, Stat } from "./rules/types";
-import { LOG_LIMIT, TURNS_PER_WATCH, WATCH_NAMES, type CampaignState, type DieFace, type GmState, type LogEntry, type Member } from "./state";
+import { LOG_LIMIT, TURNS_PER_WATCH, WATCH_NAMES, type CampaignState, type DieFace, type Foe, type GmState, type LogEntry, type Member } from "./state";
 
 const id = z.string().min(1).max(64);
 const stat = z.enum(["str", "dex", "wil"]);
@@ -75,7 +77,7 @@ export const Action = z.discriminatedUnion("t", [
 
   // Rolls
   z.object({ t: z.literal("save"), creatureId: id, stat, mode: z.enum(["normal", "advantage", "disadvantage"]) }),
-  z.object({ t: z.literal("attack"), creatureId: id, mod: z.enum(["normal", "impaired", "enhanced"]) }),
+  z.object({ t: z.literal("attack"), creatureId: id, mod: z.enum(["normal", "impaired", "enhanced"]), targetId: id.optional() }),
   z.object({ t: z.literal("damage"), creatureId: id, amount: z.number().int().min(0).max(100), ignoreArmour: z.boolean().optional() }),
   z.object({ t: z.literal("afterFight"), creatureId: id }),
   z.object({ t: z.literal("castSpell"), creatureId: id, uid: id, power: z.number().int().min(1).max(6) }),
@@ -143,6 +145,21 @@ export const Action = z.discriminatedUnion("t", [
   z.object({ t: z.literal("mapRollHex"), key: hexKeySchema, part: z.enum(["all", "type", "landmark", "detail"]) }),
   z.object({ t: z.literal("mapReveal"), keys: z.array(hexKeySchema).min(1).max(400), revealed: z.boolean() }),
   z.object({ t: z.literal("mapMoveParty"), key: hexKeySchema, travel: z.boolean() }),
+
+  // Combat
+  z.object({
+    t: z.literal("startCombat"),
+    foes: z.array(z.object({ defId: z.string(), count: z.number().int().min(1).max(12) })).min(1).max(8),
+    surprise: z.enum(["party", "foes", "none"]),
+  }),
+  z.object({ t: z.literal("addFoes"), defId: z.string(), count: z.number().int().min(1).max(12) }),
+  z.object({ t: z.literal("nextTurn") }),
+  z.object({ t: z.literal("foeAttack"), foeId: id, attack: z.number().int().min(0).max(5), targetId: id, mod: z.enum(["normal", "impaired", "enhanced"]) }),
+  z.object({ t: z.literal("foeDamage"), foeId: id, amount: z.number().int().min(0).max(100), ignoreArmour: z.boolean().optional() }),
+  z.object({ t: z.literal("foeMorale"), foeId: id }),
+  z.object({ t: z.literal("setFoeStatus"), foeId: id, status: z.enum(["active", "down", "fled", "dead"]) }),
+  z.object({ t: z.literal("endCombat") }),
+  z.object({ t: z.literal("rollReaction") }),
 ]);
 export type Action = z.infer<typeof Action>;
 
@@ -227,6 +244,114 @@ export function applyAction(state: CampaignState, action: Action, ctx: ActionCon
         });
     }
     for (const when of adv.wildernessChecks) logEncounter(rollEncounter(true, rng), when);
+  }
+
+  /**
+   * Damage to a mouse or hireling. Armour soaks each hit; past HP it goes to
+   * `attribute` (usually STR) and forces a save. A failed save is critical
+   * damage: the creature's own effect if it has one, otherwise Injured and
+   * incapacitated.
+   */
+  function hurt(c: Creature, layout: InventoryLayout, amount: number, opts: { attribute?: Stat; critical?: string; ignoreArmour?: boolean; source?: string } = {}) {
+    const attr = opts.attribute ?? "str";
+    const armour = opts.ignoreArmour ? 0 : armourDefence(c.inventory);
+    const r = applyDamage(c.hp, c.stats[attr], amount, armour);
+    c.hp = r.hp;
+    c.stats[attr] = r.str;
+    if (armour > 0) for (const card of Object.values(c.inventory.cards)) if (card.kind === "armour" && !c.usedInFight.includes(card.uid)) c.usedInFight.push(card.uid);
+    const killed = attr === "str" && r.dead;
+    const parts = [`${r.dealt} damage${armour ? ` (${amount} − ${armour} armour)` : ""}`];
+    if (r.strDamage) parts.push(`${r.strDamage} to ${STAT_LABEL[attr]}`);
+    log({
+      kind: "damage",
+      title: `${c.name} takes ${r.dealt} damage${opts.source ? ` from ${opts.source}` : ""}`,
+      detail: parts.join(", "),
+      total: r.dealt,
+      outcome: killed ? "dead" : undefined,
+      subjectId: c.id,
+    });
+    if (killed) {
+      c.dead = true;
+      log({ kind: "event", title: `${c.name} has died`, detail: "Roll up a new mouse and get back in quickly.", outcome: "dead", subjectId: c.id });
+      return;
+    }
+    if (r.strDamage === 0) return;
+    if (attr !== "str" && c.stats[attr].cur === 0) {
+      log({ kind: "event", title: attr === "dex" ? `${c.name} can't move!` : `${c.name} is reduced to insensibility!`, outcome: "critical", subjectId: c.id });
+    }
+    if (attr === "str" && !opts.critical) return critSave(c, layout);
+    const s = saveFor(attr, c.stats[attr].cur, c.inventory, gritOf(c), "normal", rng);
+    const critical = !s.success;
+    if (critical && !opts.critical) {
+      addCard(c.inventory, layout, conditionCard("injured", newId()));
+      c.incapacitated = true;
+    }
+    log({
+      kind: "save",
+      title: `${c.name} · ${STAT_LABEL[attr]} save vs critical damage`,
+      detail: critical ? (opts.critical ?? "Critical damage! Injured and incapacitated until tended and rested.") : "Still fighting.",
+      dice: saveDice(s.rolls, s.roll),
+      total: s.roll,
+      outcome: critical ? "critical" : "success",
+      subjectId: c.id,
+    });
+  }
+
+  function combatOrFail() {
+    return state.combat ?? fail("There's no fight going on.");
+  }
+
+  function foeAt(foeId: string): Foe {
+    return combatOrFail().foes[foeId] ?? fail("That foe is gone.");
+  }
+
+  function logMorale(foe: Foe, why: string) {
+    const r = moraleCheck(foe, rng);
+    log({
+      kind: "save",
+      title: `${foe.name} · morale (${why})`,
+      detail: r.success ? "Holds its ground." : "Breaks and flees!",
+      dice: saveDice(r.rolls, r.roll),
+      total: r.roll,
+      outcome: r.success ? "success" : "fail",
+      subjectId: foe.id,
+    });
+    return r.success;
+  }
+
+  /** Logs a hit on a foe and runs the morale checks it triggers. */
+  function afterFoeHit(foe: Foe, r: FoeDamageResult, source: string) {
+    log({
+      kind: "damage",
+      title: `${foe.name} takes ${r.dealt} damage from ${source}`,
+      detail: [r.strDamage ? `${r.strDamage} to STR` : "", foe.armour ? `armour ${foe.armour}` : ""].filter(Boolean).join(", ") || undefined,
+      total: r.dealt,
+      outcome: r.killed ? "dead" : undefined,
+      subjectId: foe.id,
+    });
+    if (r.critSave) {
+      log({
+        kind: "save",
+        title: `${foe.name} · STR save vs critical damage`,
+        detail: r.downed ? "Critical damage! It's out of the fight." : "Still fighting.",
+        dice: saveDice(r.critSave.rolls, r.critSave.roll),
+        total: r.critSave.roll,
+        outcome: r.downed ? "critical" : "success",
+        subjectId: foe.id,
+      });
+    }
+    let fell = r.killed || r.downed;
+    if (!fell && r.strDamage > 0 && !foe.critTaken) {
+      foe.critTaken = true;
+      fell = !logMorale(foe, "badly hurt");
+    }
+    if (fell) {
+      if (r.killed) log({ kind: "event", title: `${foe.name} is slain!`, outcome: "dead", subjectId: foe.id });
+      for (const ally of Object.values(state.combat!.foes)) if (isActive(ally)) logMorale(ally, `${foe.name} fell`);
+    }
+    if (Object.values(state.combat!.foes).every((f) => !isActive(f))) {
+      log({ kind: "event", title: "The foes are beaten!", detail: "The GM can end the fight.", outcome: "success" });
+    }
   }
 
   function hexAt(key: string) {
@@ -394,34 +519,17 @@ export function applyAction(state: CampaignState, action: Action, ctx: ActionCon
         total: a.damage,
         subjectId: c.id,
       });
+      if (action.targetId) {
+        const foe = foeAt(action.targetId);
+        if (!isActive(foe)) fail(`${foe.name} is already out of the fight.`);
+        afterFoeHit(foe, damageFoe(foe, a.damage, rng), c.name);
+      }
       break;
     }
 
     case "damage": {
       const { c, layout } = editable(action.creatureId);
-      const armour = action.ignoreArmour ? 0 : armourDefence(c.inventory);
-      const r = applyDamage(c.hp, c.stats.str, action.amount, armour);
-      c.hp = r.hp;
-      c.stats.str = r.str;
-      for (const card of Object.values(c.inventory.cards)) {
-        if (card.kind === "armour" && armour > 0 && !c.usedInFight.includes(card.uid)) c.usedInFight.push(card.uid);
-      }
-      const parts = [`${r.dealt} damage${armour ? ` (${action.amount} − ${armour} armour)` : ""}`];
-      if (r.strDamage) parts.push(`${r.strDamage} to STR`);
-      log({
-        kind: "damage",
-        title: `${c.name} takes ${r.dealt} damage`,
-        detail: parts.join(", "),
-        total: r.dealt,
-        outcome: r.dead ? "dead" : undefined,
-        subjectId: c.id,
-      });
-      if (r.dead) {
-        c.dead = true;
-        log({ kind: "event", title: `${c.name} has died`, detail: "Roll up a new mouse and get back in quickly.", outcome: "dead", subjectId: c.id });
-      } else if (r.needsCritSave) {
-        critSave(c, layout);
-      }
+      hurt(c, layout, action.amount, { ignoreArmour: action.ignoreArmour });
       break;
     }
 
@@ -812,6 +920,134 @@ export function applyAction(state: CampaignState, action: Action, ctx: ActionCon
     case "mapReveal": {
       gmOnly();
       for (const k of action.keys) hexAt(k).revealed = action.revealed;
+      break;
+    }
+
+    case "startCombat": {
+      gmOnly();
+      if (state.combat) fail("A fight is already going on.");
+      const foes: Foe[] = [];
+      const first = new Set<string>();
+      for (const group of action.foes) {
+        const def = creatureDef(group.defId) ?? fail("Unknown creature.");
+        for (let i = 0; i < group.count; i++) {
+          const f = makeFoe(def, newId(), group.count > 1 ? `${def.name} ${i + 1}` : def.name);
+          foes.push(f);
+          if (def.first && action.surprise !== "party") first.add(f.id);
+        }
+      }
+      const party = [...Object.values(state.mice), ...Object.values(state.hirelings)].filter((c) => !c.dead);
+      const init = rollInitiative(party, foes, first, action.surprise, rng);
+      state.combat = { round: 1, order: init.order, turn: 0, foes: Object.fromEntries(foes.map((f) => [f.id, f])) };
+      log({
+        kind: "encounter",
+        title: `Fight! ${action.foes.map((g) => `${g.count > 1 ? `${g.count} ` : ""}${creatureDef(g.defId)!.name}${g.count > 1 ? "s" : ""}`).join(", ")}`,
+        detail:
+          action.surprise === "party"
+            ? "The mice strike first!"
+            : action.surprise === "foes"
+              ? "Ambush! The foes act first."
+              : init.saves.length
+                ? `DEX saves to act first: ${init.saves.map((x) => `${(state.mice[x.id] ?? state.hirelings[x.id]).name} ${x.result.success ? "✓" : "✗"}`).join(", ")}`
+                : undefined,
+        dice: init.saves.slice(0, 12).map((x) => ({ sides: 20, value: x.result.roll, kept: x.result.success })),
+        outcome: "encounter",
+      });
+      break;
+    }
+
+    case "addFoes": {
+      gmOnly();
+      const combat = combatOrFail();
+      const def = creatureDef(action.defId) ?? fail("Unknown creature.");
+      for (let i = 0; i < action.count; i++) {
+        const f = makeFoe(def, newId(), `${def.name} ${Object.values(combat.foes).filter((x) => x.defId === def.id).length + 1}`);
+        combat.foes[f.id] = f;
+        combat.order.push(f.id);
+      }
+      log({ kind: "event", title: `More foes join the fight: ${action.count > 1 ? `${action.count} ${def.name}s` : def.name}` });
+      break;
+    }
+
+    case "nextTurn": {
+      const combat = combatOrFail();
+      const current = combat.order[combat.turn];
+      const currentOwner = state.mice[current]?.ownerId ?? state.mice[state.hirelings[current]?.employerId]?.ownerId;
+      if (!isGm && currentOwner !== actor.id) fail("It's not your turn.");
+      const canAct = (cid: string) => {
+        const foe = combat.foes[cid];
+        if (foe) return isActive(foe);
+        const c = state.mice[cid] ?? state.hirelings[cid];
+        return !!c && !c.dead;
+      };
+      for (let step = 0; step < combat.order.length; step++) {
+        combat.turn++;
+        if (combat.turn >= combat.order.length) {
+          combat.turn = 0;
+          combat.round++;
+          log({ kind: "event", title: `Round ${combat.round}` });
+        }
+        if (canAct(combat.order[combat.turn])) break;
+      }
+      break;
+    }
+
+    case "foeAttack": {
+      gmOnly();
+      const foe = foeAt(action.foeId);
+      const atk = foe.attacks[action.attack] ?? fail("No such attack.");
+      const target = creature(action.targetId);
+      const a = attack([atk.damage], action.mod, rng);
+      log({
+        kind: "attack",
+        title: `${foe.name} attacks ${target.c.name} with its ${atk.name}`,
+        dice: a.rolled.map((r) => ({ sides: Number(r.expr.slice(r.expr.indexOf("d") + 1)), value: r.value, kept: true })),
+        total: a.damage,
+        subjectId: target.c.id,
+      });
+      hurt(target.c, target.layout, a.damage, { attribute: atk.damages, critical: foe.critical, source: foe.name });
+      break;
+    }
+
+    case "foeDamage": {
+      gmOnly();
+      const foe = foeAt(action.foeId);
+      afterFoeHit(foe, damageFoe(foe, action.amount, rng, action.ignoreArmour), "the GM");
+      break;
+    }
+
+    case "foeMorale": {
+      gmOnly();
+      const foe = foeAt(action.foeId);
+      if (!isActive(foe)) fail(`${foe.name} is already out of the fight.`);
+      logMorale(foe, "called by the GM");
+      break;
+    }
+
+    case "setFoeStatus": {
+      gmOnly();
+      foeAt(action.foeId).status = action.status;
+      break;
+    }
+
+    case "endCombat": {
+      gmOnly();
+      const combat = combatOrFail();
+      const foes = Object.values(combat.foes);
+      const tally = (st: string) => foes.filter((f) => f.status === st).length;
+      state.combat = null;
+      log({
+        kind: "event",
+        title: "The fight is over",
+        detail: [`${tally("dead")} slain`, `${tally("down")} down`, `${tally("fled")} fled`, `${tally("active")} still standing`].join(" · ") + ". Check your gear: weapons and armour used may need marking.",
+      });
+      break;
+    }
+
+    case "rollReaction": {
+      gmOnly();
+      const r = roll("2d6", rng);
+      log({ kind: "roll", title: "Reaction roll", detail: reactionFor(r.total), dice: r.dice, total: r.total });
       break;
     }
 

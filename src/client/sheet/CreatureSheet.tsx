@@ -5,6 +5,7 @@ import { gritForLevel, levelForXp, xpForLevel } from "../../shared/rules/advance
 import { HIRELING_LAYOUT, MOUSE_LAYOUT, armourDefence, isEncumbered, pipCapacity, wieldedWeapons } from "../../shared/rules/inventory";
 import { disadvantageReasons, type SaveMode } from "../../shared/rules/saves";
 import { STATS, type Creature, type Hireling, type Mouse, type Stat } from "../../shared/rules/types";
+import { useTarget } from "../combat/ui";
 import { useCanEdit, useRoom } from "../room";
 import { Bar, Btn, SectionTitle } from "../ui";
 import { AddCardDialog } from "./AddCardDialog";
@@ -33,6 +34,9 @@ export function CreatureSheet({ creature, compact = false }: { creature: Creatur
   const [adding, setAdding] = useState(false);
   const [dmg, setDmg] = useState("");
   const [attackMod, setAttackMod] = useState<"normal" | "impaired" | "enhanced">("normal");
+  const target = useTarget((s) => s.target);
+  // In a fight, attacks from the sheet hit whichever foe this player has targeted.
+  const liveTarget = useRoom((s) => (target && s.state?.combat?.foes[target]?.status === "active" ? target : undefined));
 
   const c = creature;
   const id = c.id;
@@ -145,7 +149,7 @@ export function CreatureSheet({ creature, compact = false }: { creature: Creatur
         <section className="rounded-lg bg-ink/5 p-2.5">
           <SectionTitle>Fight</SectionTitle>
           <div className="flex flex-wrap items-center gap-2">
-            <Btn tone="ember" onClick={() => send({ t: "attack", creatureId: id, mod: attackMod })}>
+            <Btn tone="ember" onClick={() => send({ t: "attack", creatureId: id, mod: attackMod, targetId: liveTarget })}>
               ⚔ Attack {attackMod === "normal" ? (weapons.length ? weapons.map((w) => w.damage).join(" / ") : "d6 (paws)") : attackMod === "impaired" ? "d4" : "d12"}
             </Btn>
             <select

@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { GmConsole } from "../gm/GmConsole";
 import { MapEditor } from "../gm/MapEditor";
+import { FightPanel } from "../gm/FightPanel";
+import { TurnBar } from "../combat/TurnBar";
 import { useRoom } from "../room";
 import { CreatureSheet } from "../sheet/CreatureSheet";
 import { MouseCreator } from "../sheet/MouseCreator";
@@ -9,14 +11,14 @@ import { Btn } from "../ui";
 import { PartyPanel } from "./PartyPanel";
 import { RollLog } from "./RollLog";
 
-type Tab = "direct" | "map" | "mouse" | "party" | "log";
+type Tab = "direct" | "map" | "fight" | "mouse" | "party" | "log";
 
 export function SidePanel() {
   const role = useRoom((s) => s.you?.role);
   const [tab, setTab] = useState<Tab>(() => (role === "gm" ? "direct" : "mouse"));
 
   const tabs: [Tab, string][] = [
-    ...(role === "gm" ? ([["direct", "Direct"], ["map", "Map"]] as [Tab, string][]) : []),
+    ...(role === "gm" ? ([["direct", "Direct"], ["map", "Map"], ["fight", "Fight"]] as [Tab, string][]) : []),
     ["mouse", role === "gm" ? "My mice" : "My mouse"],
     ["party", "Party"],
     ["log", "Chronicle"],
@@ -29,15 +31,18 @@ export function SidePanel() {
           <button
             key={id}
             onClick={() => setTab(id)}
-            className={`rounded-t-md px-3 py-1.5 font-display text-xl ${tab === id ? "bg-white/60 text-ink" : "text-ink-soft hover:bg-white/30"}`}
+            className={`rounded-t-md px-2.5 py-1.5 font-display text-lg ${tab === id ? "bg-white/60 text-ink" : "text-ink-soft hover:bg-white/30"}`}
           >
             {label}
           </button>
         ))}
       </nav>
+      {/* The GM's Fight tab has its own round controls. */}
+      {tab !== "fight" && <TurnBar />}
       <div className="min-h-0 flex-1 overflow-y-auto p-3">
         {tab === "direct" && role === "gm" && <GmConsole />}
         {tab === "map" && role === "gm" && <MapEditor />}
+        {tab === "fight" && role === "gm" && <FightPanel />}
         {tab === "mouse" && <MyMice />}
         {tab === "party" && <PartyPanel />}
         {tab === "log" && <RollLog />}

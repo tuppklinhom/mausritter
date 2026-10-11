@@ -1,6 +1,7 @@
 import type { HexType } from "./data/hexcrawl";
 import type { MouseRoll } from "./rules/character";
-import type { Hireling, Mouse } from "./rules/types";
+import type { CreatureAttack } from "./data/creatures";
+import type { Hireling, Mouse, Score } from "./rules/types";
 
 export type Role = "gm" | "player";
 
@@ -107,6 +108,36 @@ export interface MapState {
   party: string | null;
 }
 
+export type FoeStatus = "active" | "down" | "fled" | "dead";
+
+/** An enemy in the current fight, built from a bestiary entry. */
+export interface Foe {
+  id: string;
+  defId: string;
+  name: string;
+  icon: string;
+  tint: string;
+  hp: Score;
+  str: Score;
+  dex: Score;
+  wil: Score;
+  armour: number;
+  attacks: CreatureAttack[];
+  critical?: string;
+  status: FoeStatus;
+  /** Morale is tested the first time a foe takes critical damage. */
+  critTaken: boolean;
+}
+
+export interface CombatState {
+  round: number;
+  /** Mouse, hireling and foe ids in acting order. */
+  order: string[];
+  /** Index into `order` of whoever is acting. */
+  turn: number;
+  foes: Record<string, Foe>;
+}
+
 /** GM-only campaign data, stripped before state goes to players. */
 export interface GmState {
   scenes: SceneDef[];
@@ -125,6 +156,7 @@ export interface CampaignState {
   stage: StageState;
   clock: Clock;
   map: MapState;
+  combat: CombatState | null;
   /** Present on the server and for the GM; absent in what players receive. */
   gm?: GmState;
 }
@@ -144,6 +176,7 @@ export function emptyCampaign(code: string, now = Date.now()): CampaignState {
     log: [],
     stage: { view: "scene", scene: null, ambience: "none", dialogue: null },
     map: { cols: 5, rows: 5, hexes: {}, party: null },
+    combat: null,
     clock: { day: 1, watch: 1, turn: 0, mode: "dungeon", season: "spring" },
     gm: { scenes: [], notes: "" },
   };

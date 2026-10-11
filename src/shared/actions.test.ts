@@ -300,3 +300,61 @@ describe("hex map", () => {
     expect(state.map.hexes["0,0"].landmark).toBe("Blackberry hedge");
   });
 });
+
+describe("combat", () => {
+  function fight(foes: { defId: string; count: number }[], surprise: "party" | "foes" | "none" = "party") {
+    const ctx = setup();
+    const m = makeMouse(ctx.run, ctx.state, pip, "sword");
+    ctx.run(gm, { t: "startCombat", foes, surprise });
+    return { ...ctx, m, combat: ctx.state.combat! };
+  }
+
+  it("only the GM starts fights; the party acts first on a surprise attack", () => {
+    const { run, combat, m } = fight([{ defId: "rat", count: 2 }]);
+    expect(() => run(pip, { t: "startCombat", foes: [{ defId: "rat", count: 1 }], surprise: "none" })).toThrow("Only the GM");
+    expect(combat.order[0]).toBe(m.id);
+    expect(Object.values(combat.foes).map((f) => f.name)).toEqual(["Rat 1", "Rat 2"]);
+  });
+
+  it("a mouse attacks a foe; a fallen ally shakes the others' morale", () => {
+    const { state, run, m, combat } = fight([{ defId: "rat", count: 2 }]);
+    const [r1, r2] = Object.keys(combat.foes);
+    // d8 sword = 8: 3 HP, 5 STR → rat STR 7, save rolls 20 → down. Rat 2 morale rolls 15 vs WIL 8 → flees.
+    const ev = run(pip, { t: "attack", creatureId: m.id, mod: "normal", targetId: r1 }, scriptedRng([8, 8], [20, 20], [15, 20]));
+    expect(state.combat!.foes[r1].status).toBe("down");
+    expect(state.combat!.foes[r2].status).toBe("fled");
+    expect(ev.some((e) => e.title === "The foes are beaten!")).toBe(true);
+  });
+
+  it("venom damages DEX, and the creature's own critical effect replaces Injured", () => {
+    const { state, run, m, combat } = fight([{ defId: "spider", count: 1 }]);
+    const spider = Object.keys(combat.foes)[0];
+    m.hp = { max: 2, cur: 2 };
+    m.stats.dex = { max: 10, cur: 10 };
+    // bite d6 = 6: 2 HP, 4 DEX → DEX 6; DEX save rolls 18 → critical: carried away.
+    const ev = run(gm, { t: "foeAttack", foeId: spider, attack: 0, targetId: m.id, mod: "normal" }, scriptedRng([6, 6], [18, 20]));
+    expect(m.stats.dex.cur).toBe(6);
+    expect(m.stats.str.cur).toBe(m.stats.str.max);
+    const crit = ev.find((e) => e.outcome === "critical")!;
+    expect(crit.detail).toBe("Carried away in web.");
+    expect(Object.values(m.inventory.cards).some((c) => c.defId === "injured")).toBe(false);
+    expect(state.combat).not.toBeNull();
+  });
+
+  it("turns skip fallen foes and wrap into the next round", () => {
+    const { state, run, combat } = fight([{ defId: "rat", count: 2 }]);
+    const [r1] = Object.keys(combat.foes);
+    run(gm, { t: "setFoeStatus", foeId: r1, status: "dead" });
+    run(pip, { t: "nextTurn" }); // mouse → skips dead rat 1 → rat 2
+    expect(state.combat!.order[state.combat!.turn]).not.toBe(r1);
+    expect(() => run(bo, { t: "nextTurn" })).toThrow("not your turn");
+    run(gm, { t: "nextTurn" });
+    expect(state.combat!.round).toBe(2);
+  });
+
+  it("ending the fight clears it", () => {
+    const { state, run } = fight([{ defId: "rat", count: 1 }]);
+    run(gm, { t: "endCombat" });
+    expect(state.combat).toBeNull();
+  });
+});
