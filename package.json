@@ -12,7 +12,8 @@
     "typecheck": "tsc -b",
     "cf-typegen": "wrangler types",
     "e2e": "playwright test",
-    "icons": "node scripts/build-icons.mjs"
+    "icons": "node scripts/build-icons.mjs",
+    "guide:shots": "playwright test -c guide/playwright.config.ts"
   },
   "dependencies": {
     "@3d-dice/dice-box-threejs": "^0.0.12",

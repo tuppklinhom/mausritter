@@ -1,0 +1,811 @@
+<title>Mausritter Table Handbook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Grenze+Gotisch:wght@500;700&family=Alegreya+Sans:ital,wght@0,400;0,500;0,700;0,800;1,400&family=Alegreya+Sans+SC:wght@500;700&display=swap" rel="stylesheet" />
+<style>
+  /* Layout: a handbook spread. Sticky contents rail on the left, one reading column, screenshots set like plates. */
+  :root {
+    --page: #ece0c4;
+    --sheet: #f6eedc;
+    --plate: #e2d3b1;
+    --ink: #2b2118;
+    --ink-soft: #66533f;
+    --line: #c9b48c;
+    --ember: #a9461e;
+    --moss: #4c6a2e;
+    --gold: #9a6f1c;
+    --code-bg: #e9dcbd;
+    --shadow: 0 1px 0 rgb(255 255 255 / 0.5), 0 10px 26px -14px rgb(60 35 10 / 0.45);
+    --font-display: "Grenze Gotisch", "Old English Text MT", Georgia, serif;
+    --font-body: "Alegreya Sans", "Segoe UI", system-ui, sans-serif;
+    --font-sc: "Alegreya Sans SC", "Alegreya Sans", system-ui, sans-serif;
+    --font-mono: ui-monospace, "Cascadia Mono", Consolas, "Liberation Mono", monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --page: #1b140e;
+      --sheet: #241b13;
+      --plate: #2e2319;
+      --ink: #efe3c8;
+      --ink-soft: #bba886;
+      --line: #4d3c2a;
+      --ember: #e2804f;
+      --moss: #9cc06f;
+      --gold: #dcae4c;
+      --code-bg: #33271c;
+      --shadow: 0 10px 26px -14px rgb(0 0 0 / 0.8);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --page: #1b140e;
+    --sheet: #241b13;
+    --plate: #2e2319;
+    --ink: #efe3c8;
+    --ink-soft: #bba886;
+    --line: #4d3c2a;
+    --ember: #e2804f;
+    --moss: #9cc06f;
+    --gold: #dcae4c;
+    --code-bg: #33271c;
+    --shadow: 0 10px 26px -14px rgb(0 0 0 / 0.8);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 16px; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--ink);
+    font: 400 17px/1.6 var(--font-body);
+    padding-inline: 16px;
+  }
+  a { color: var(--ember); text-underline-offset: 3px; }
+  a:focus-visible, button:focus-visible, summary:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; border-radius: 4px; }
+
+  .spread {
+    display: grid;
+    grid-template-columns: 230px minmax(0, 780px);
+    gap: 48px;
+    justify-content: center;
+    padding-block: 40px 80px;
+  }
+  @media (max-width: 980px) { .spread { grid-template-columns: minmax(0, 1fr); gap: 24px; } }
+
+  /* Contents rail */
+  nav.toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 20px); align-self: start; max-height: calc(100vh - 40px); overflow-y: auto; font-size: 15px; }
+  nav.toc .brand { font: 700 30px/1 var(--font-display); margin: 0 0 4px; }
+  nav.toc .sub { color: var(--ink-soft); font-size: 13px; margin: 0 0 18px; }
+  nav.toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+  nav.toc li a { display: flex; gap: 8px; padding: 3px 8px; border-radius: 6px; color: var(--ink); text-decoration: none; }
+  nav.toc li a:hover { background: var(--plate); }
+  nav.toc li a span { color: var(--ink-soft); font-variant-numeric: tabular-nums; min-width: 1.4em; }
+  nav.toc .group { font: 700 12px/1 var(--font-sc); letter-spacing: 0.08em; color: var(--ink-soft); margin: 14px 8px 6px; text-transform: lowercase; }
+  @media (max-width: 980px) {
+    nav.toc { position: static; max-height: none; }
+    nav.toc ol { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+  }
+
+  main { min-width: 0; }
+  header.title { padding-block: 8px 28px; border-bottom: 2px solid var(--ink); margin-bottom: 8px; }
+  header.title .eyebrow { font: 700 13px/1 var(--font-sc); letter-spacing: 0.1em; color: var(--ember); text-transform: lowercase; }
+  header.title h1 { font: 700 clamp(44px, 7vw, 72px)/0.95 var(--font-display); margin: 10px 0 14px; text-wrap: balance; }
+  header.title p { margin: 0; max-width: 62ch; color: var(--ink-soft); font-size: 18px; }
+
+  section.chapter { padding-block: 36px 8px; border-bottom: 1px solid var(--line); }
+  section.chapter:last-of-type { border-bottom: 0; }
+  h2 { font: 700 40px/1.05 var(--font-display); margin: 0 0 6px; text-wrap: balance; display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+  h2 .num { font: 500 15px/1 var(--font-sc); color: var(--ink-soft); letter-spacing: 0.06em; }
+  h3 { font: 700 26px/1.15 var(--font-display); margin: 30px 0 6px; text-wrap: balance; }
+  h4 { font: 800 15px/1.3 var(--font-sc); letter-spacing: 0.06em; margin: 22px 0 6px; text-transform: lowercase; }
+  p, li { max-width: 68ch; }
+  p { margin: 0 0 12px; }
+  .lede { font-size: 18.5px; color: var(--ink-soft); }
+
+  .who { display: inline-flex; gap: 6px; }
+  .chip { font: 700 12px/1 var(--font-sc); letter-spacing: 0.06em; text-transform: lowercase; padding: 4px 8px 5px; border-radius: 999px; border: 1.5px solid currentColor; }
+  .chip.gm { color: var(--gold); }
+  .chip.player { color: var(--moss); }
+
+  /* Screenshot plates */
+  figure.plate { margin: 18px 0 22px; }
+  figure.plate button { all: unset; cursor: zoom-in; display: block; border-radius: 8px; }
+  figure.plate img { display: block; width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--line); box-shadow: var(--shadow); background: var(--plate); }
+  figure.plate.narrow img { max-width: 520px; }
+  figure.plate.tiny img { max-width: 600px; }
+  figcaption { font-size: 14px; color: var(--ink-soft); margin-top: 8px; max-width: 70ch; }
+  figcaption b { color: var(--ink); }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+  .pair figure.plate { margin-block: 12px; }
+  @media (max-width: 640px) { .pair { grid-template-columns: 1fr; } }
+
+  /* Rule boxes: set like the game's own item cards */
+  aside.rule {
+    position: relative;
+    margin: 22px 0;
+    padding: 20px 18px 12px;
+    background: var(--sheet);
+    border: 2px solid var(--ink);
+    border-radius: 6px;
+  }
+  aside.rule > .tab {
+    position: absolute; top: -12px; left: 14px;
+    font: 700 17px/1 var(--font-display);
+    background: var(--ink); color: var(--sheet);
+    padding: 4px 10px 5px; border-radius: 4px;
+  }
+  aside.rule p:last-child, aside.rule ul:last-child, aside.rule table:last-child { margin-bottom: 0; }
+  aside.rule ul { margin: 0 0 10px; padding-left: 20px; }
+  aside.note {
+    margin: 18px 0; padding: 12px 16px; border-radius: 6px;
+    background: var(--plate); font-size: 15.5px;
+  }
+  aside.note b:first-child { font-family: var(--font-sc); letter-spacing: 0.04em; }
+
+  /* Control glossary: each control named the way the app labels it */
+  dl.controls { display: grid; grid-template-columns: minmax(130px, max-content) minmax(0, 1fr); gap: 10px 16px; margin: 14px 0 18px; }
+  dl.controls dt { margin: 0; }
+  dl.controls dd { margin: 0; min-width: 0; }
+  .btn {
+    display: inline-block; font: 700 14px/1.25 var(--font-body); white-space: nowrap;
+    padding: 3px 9px; border-radius: 6px; border: 1px solid var(--line);
+    background: var(--sheet); color: var(--ink); box-shadow: 0 1px 0 var(--line);
+  }
+  .btn.ember { background: var(--ember); color: var(--sheet); border-color: transparent; }
+  .btn.gold { background: var(--gold); color: var(--sheet); border-color: transparent; }
+  .btn.moss { background: var(--moss); color: var(--sheet); border-color: transparent; }
+  .btn.plain-text { background: none; box-shadow: none; border-style: dashed; }
+  @media (max-width: 560px) { dl.controls { grid-template-columns: 1fr; gap: 2px 0; } dl.controls dd { margin-bottom: 10px; } }
+
+  code, kbd { font: 500 0.88em/1 var(--font-mono); background: var(--code-bg); padding: 2px 5px; border-radius: 4px; }
+
+  .tablewrap { overflow-x: auto; margin: 10px 0 16px; }
+  table { border-collapse: collapse; font-size: 15.5px; min-width: 100%; }
+  th, td { text-align: left; padding: 6px 12px 6px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font: 700 13px/1.2 var(--font-sc); letter-spacing: 0.05em; text-transform: lowercase; color: var(--ink-soft); }
+  td.n { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  ol.steps { padding-left: 22px; }
+  ol.steps li { margin-bottom: 6px; }
+
+  .dots { display: inline-flex; gap: 3px; vertical-align: -1px; }
+  .dots i { width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid var(--ink); display: inline-block; }
+  .dots i.on { background: var(--ink); }
+
+  dialog#zoom { border: 0; padding: 0; background: transparent; max-width: 96vw; max-height: 94vh; }
+  dialog#zoom::backdrop { background: rgb(20 12 6 / 0.82); }
+  dialog#zoom img { display: block; max-width: 96vw; max-height: 90vh; width: auto; height: auto; border-radius: 8px; }
+  dialog#zoom p { color: #efe3c8; font-size: 14px; margin: 8px 4px 0; }
+  dialog#zoom button { position: absolute; top: 8px; right: 8px; font: 700 15px/1 var(--font-body); background: #efe3c8; color: #2b2118; border: 0; border-radius: 6px; padding: 7px 10px; cursor: pointer; }
+
+  footer.colophon { margin-top: 40px; font-size: 14px; color: var(--ink-soft); }
+</style>
+
+<div class="spread">
+  <nav class="toc" aria-label="Contents">
+    <p class="brand">Handbook</p>
+    <p class="sub">for the Mausritter Table app</p>
+    <p class="group">Everyone</p>
+    <ol>
+      <li><a href="#start"><span>1</span>The table at a glance</a></li>
+      <li><a href="#joining"><span>2</span>Taking a seat</a></li>
+      <li><a href="#stage"><span>3</span>The stage</a></li>
+      <li><a href="#dice"><span>4</span>Dice and saves</a></li>
+    </ol>
+    <p class="group">Players</p>
+    <ol>
+      <li><a href="#creator"><span>5</span>Making a mouse</a></li>
+      <li><a href="#sheet"><span>6</span>The character sheet</a></li>
+      <li><a href="#inventory"><span>7</span>Inventory and conditions</a></li>
+      <li><a href="#rest"><span>8</span>Rest, levels and hirelings</a></li>
+      <li><a href="#magic"><span>9</span>Spells</a></li>
+      <li><a href="#tabs"><span>10</span>Party and Chronicle</a></li>
+    </ol>
+    <p class="group">Running the game</p>
+    <ol>
+      <li><a href="#time"><span>11</span>Time, light and encounters</a></li>
+      <li><a href="#direct"><span>12</span>GM: the Direct tab</a></li>
+      <li><a href="#map"><span>13</span>GM: the hexcrawl map</a></li>
+      <li><a href="#combat"><span>14</span>Combat</a></li>
+      <li><a href="#rulings"><span>15</span>Rulings and what's missing</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <header class="title">
+      <div class="eyebrow">Companion handbook · rulebook 2.3</div>
+      <h1>Mausritter Table Handbook</h1>
+      <p>Every screen, button and tab in the app, with the Mausritter rule each one handles. Players can read sections 1–10. The GM should read everything.</p>
+    </header>
+
+    <!-- 1 -->
+    <section class="chapter" id="start">
+      <h2><span class="num">1</span>The table at a glance</h2>
+      <p class="lede">Mausritter is a game about small, brave mice in a very big world. The GM describes a situation, each player says what their mouse does, and the GM says what happens. The rules only step in when something is risky.</p>
+      <p>The app gives that conversation a shared screen, laid out like a video game.</p>
+      <figure class="plate">
+        <button type="button" data-zoom><img src="shots/player-table.webp" alt="The player's view: the stage on the left with a 3D d20 and a 'STR save' result of 14, the character sheet on the right." width="1440" height="960" loading="lazy" /></button>
+        <figcaption><b>A player's screen.</b> The stage on the left is the same for everyone. The panel on the right is your own: your mouse's sheet, the party and the chronicle.</figcaption>
+      </figure>
+      <dl class="controls">
+        <dt><span class="btn plain-text">Top bar</span></dt>
+        <dd>Table code, sound, 3D dice, and who's online. See <a href="#joining">Taking a seat</a>.</dd>
+        <dt><span class="btn plain-text">Stage</span></dt>
+        <dd>The shared screen. It shows scene art, the map, dice, fights and dialogue. Only the GM decides what goes on it.</dd>
+        <dt><span class="btn plain-text">Dice tray</span></dt>
+        <dd>Free dice under the stage, for any roll that isn't on a sheet.</dd>
+        <dt><span class="btn plain-text">Side panel</span></dt>
+        <dd>Players get <b>My mouse</b>, <b>Party</b> and <b>Chronicle</b>. The GM also gets <b>Direct</b>, <b>Map</b> and <b>Fight</b>.</dd>
+      </dl>
+      <aside class="note"><b>How a session flows.</b> The GM shows a scene and describes it. Players say what their mice try, and press a Save button when the GM asks for one. Time passes on the tracker, torches burn down, and the encounter die rolls. When a fight starts, the stage becomes the battle screen. Everything everyone does is written to the Chronicle.</aside>
+    </section>
+
+    <!-- 2 -->
+    <section class="chapter" id="joining">
+      <h2><span class="num">2</span>Taking a seat <span class="who"><span class="chip gm">GM</span><span class="chip player">Player</span></span></h2>
+      <div class="pair">
+        <figure class="plate">
+          <button type="button" data-zoom><img src="shots/home.webp" alt="Home screen with 'Start a new table (GM)' and a table-code box with a Join button." width="800" height="600" loading="lazy" /></button>
+          <figcaption><b>Home.</b> The GM starts a table; players join it with its code.</figcaption>
+        </figure>
+        <figure class="plate">
+          <button type="button" data-zoom><img src="shots/join.webp" alt="'Joining table' card asking what the table should call you." width="800" height="600" loading="lazy" /></button>
+          <figcaption><b>Name prompt.</b> This is the name others see. Your browser remembers it.</figcaption>
+        </figure>
+      </div>
+      <dl class="controls">
+        <dt><span class="btn ember">Start a new table (GM)</span></dt>
+        <dd>Creates a table with a six-character code and makes <em>this browser</em> its GM. The GM key is stored in this browser, so open the table from the same browser next time.</dd>
+        <dt><span class="btn moss">Join</span></dt>
+        <dd>Type the code the GM gave you. Opening an invite link does the same.</dd>
+      </dl>
+      <figure class="plate">
+        <button type="button" data-zoom><img src="shots/topbar.webp" alt="Top bar: Mausritter logo, table code D54DEJ, speaker icon, ambience slider, '3D dice', and member chips for Gamemaster (GM) and Pip." width="1440" height="53" loading="lazy" /></button>
+      </figure>
+      <dl class="controls">
+        <dt><span class="btn">D54DEJ</span></dt>
+        <dd>The table code. Click it to copy an invite link to send to your group.</dd>
+        <dt><span class="btn">🔊</span></dt>
+        <dd>Mutes or unmutes every sound: dice, effects and ambience. It's a setting for your browser only.</dd>
+        <dt><span class="btn">♪ slider</span></dt>
+        <dd>Volume of the background soundscape (rain, forest, a crackling hearth). Effects aren't affected.</dd>
+        <dt><span class="btn">3D dice</span></dt>
+        <dd>Turns the physics dice on or off for you. When off, rolls appear as flat tiles. Results are the same either way, because the server rolls every die and the 3D dice only act it out.</dd>
+        <dt><span class="btn">Member chips</span></dt>
+        <dd>Everyone at the table. A green dot means online, <b>GM</b> marks the game master, and a gold ring marks you.</dd>
+      </dl>
+    </section>
+
+    <!-- 3 -->
+    <section class="chapter" id="stage">
+      <h2><span class="num">3</span>The stage <span class="who"><span class="chip gm">GM</span><span class="chip player">Player</span></span></h2>
+      <p>The stage is what the whole table looks at. The GM chooses what's on it, and everyone's dice and actions play out on it.</p>
+      <div class="pair">
+        <figure class="plate">
+          <button type="button" data-zoom><img src="shots/stage-title.webp" alt="Forest backdrop with the title card 'The Rotting Granary, Something skitters in the dark'." width="804" height="883" loading="lazy" /></button>
+          <figcaption><b>A new scene.</b> The backdrop fades in under a chapter-style title.</figcaption>
+        </figure>
+        <figure class="plate">
+          <button type="button" data-zoom><img src="shots/stage-dialogue.webp" alt="The same forest with an 'Encounter!' result from two encounter dice, and Old Wick's speech box at the bottom." width="804" height="883" loading="lazy" /></button>
+          <figcaption><b>Mid-scene.</b> An encounter die result, and Old Wick speaking.</figcaption>
+        </figure>
+      </div>
+      <dl class="controls">
+        <dt><span class="btn plain-text">Party portraits</span></dt>
+        <dd>Top left: every mouse with an HP bar (green) and a STR bar (red). A portrait glows gold when the latest event is about that mouse, and flashes red when it's hurt.</dd>
+        <dt><span class="btn plain-text">Clock</span></dt>
+        <dd>Top right: day, watch and turn (e.g. "Day 1 · Morning watch · Turn 7/36"). The six dots fill toward the next light-usage mark, the footprint or cave icon shows wilderness or dungeon, and the last icon shows the season. See <a href="#time">Time, light and encounters</a>.</dd>
+        <dt><span class="btn plain-text">Result box</span></dt>
+        <dd>The latest roll: its dice (a struck-through die didn't count), the total in large type, what was rolled, and a stamped result: <b>Success</b>, <b>Failed</b>, <b>Critical damage!</b>, <b>Slain</b>, <b>Level up!</b>, <b>Broken!</b>, <b>Encounter!</b>, <b>An omen…</b>, <b>All quiet</b>, or the name of a new condition. It fades after a few seconds so the scene shows through again.</dd>
+        <dt><span class="btn plain-text">Speech box</span></dt>
+        <dd>When the GM speaks as a character, their portrait, name and line appear here, typing themselves out. Click the box to show the whole line at once.</dd>
+        <dt><span class="btn plain-text">Event ticker</span></dt>
+        <dd>Bottom left on wide screens: the last few things that happened. The full list is in the Chronicle tab.</dd>
+      </dl>
+    </section>
+
+    <!-- 4 -->
+    <section class="chapter" id="dice">
+      <h2><span class="num">4</span>Dice and saves <span class="who"><span class="chip gm">GM</span><span class="chip player">Player</span></span></h2>
+      <aside class="rule"><span class="tab">The rule</span>
+        <p>When a mouse does something risky with an uncertain outcome, the GM asks for a <b>save</b> against <b>STR</b> (strength and toughness), <b>DEX</b> (speed and agility) or <b>WIL</b> (willpower and charm). Roll a d20: <b>equal to or under</b> the attribute succeeds, and over it fails.</p>
+        <ul>
+          <li><b>Advantage</b> (well prepared or well equipped): roll 2d20 and keep the <em>lower</em> one.</li>
+          <li><b>Disadvantage</b> (badly placed or poorly equipped): roll 2d20 and keep the <em>higher</em> one.</li>
+          <li><b>Opposed saves:</b> both sides roll, and the lowest success wins.</li>
+          <li>Clever plans don't need to roll. Dice are dangerous.</li>
+        </ul>
+      </aside>
+      <figure class="plate tiny">
+        <button type="button" data-zoom><img src="shots/sheet-attributes.webp" alt="Attributes block: STR 9/9, DEX 10/10, WIL 10/10, HP 3/3, with − and + buttons, Save buttons, and an Adv / Normal / Disadv selector." width="576" height="150" loading="lazy" /></button>
+      </figure>
+      <dl class="controls">
+        <dt><span class="btn gold">Save</span></dt>
+        <dd>Rolls a d20 against that attribute's <em>current</em> value. The dice land on the stage for everyone, and the verdict is stamped.</dd>
+        <dt><span class="btn">Adv · Normal · Disadv</span></dt>
+        <dd>Set this before pressing Save, when the GM grants advantage or imposes disadvantage.</dd>
+        <dt><span class="btn plain-text">Automatic disadvantage</span></dt>
+        <dd>The app adds disadvantage on its own: <b>Injured</b> affects STR and DEX, <b>Drained</b> affects WIL, and being <b>Encumbered</b> affects every save. A red note under the attribute says why. If advantage and disadvantage both apply, they cancel out (a ruling, see <a href="#rulings">§15</a>).</dd>
+      </dl>
+      <h4>The dice tray</h4>
+      <p>The buttons under the stage roll <code>d4</code> to <code>d20</code> for anything not on a sheet. The box beside them takes any expression, and everyone sees the result:</p>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Type</th><th>Means</th><th>Used for</th></tr></thead>
+        <tbody>
+          <tr><td class="n"><code>2d6+1</code></td><td>Two d6, plus 1</td><td>Anything with a bonus</td></tr>
+          <tr><td class="n"><code>3d6kh2</code></td><td>Roll 3d6, keep the highest 2</td><td>Rolling attributes</td></tr>
+          <tr><td class="n"><code>2d20kl1</code></td><td>Roll 2d20, keep the lowest</td><td>A save with advantage</td></tr>
+          <tr><td class="n"><code>2d8</code></td><td>Two d8 added</td><td>Random spell table</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <!-- 5 -->
+    <section class="chapter" id="creator">
+      <h2><span class="num">5</span>Making a mouse <span class="who"><span class="chip player">Player</span></span></h2>
+      <div class="pair">
+        <figure class="plate">
+          <button type="button" data-zoom><img src="shots/creator.webp" alt="Mouse creator: a portrait and name, birthsign and coat line, three attribute rows showing three dice each with the lowest struck through, an HP and Pips box with the background 'Merchant' and its items, and lock buttons." width="600" height="883" loading="lazy" /></button>
+          <figcaption><b>The creator.</b> Rolled on the server and visible to the whole table as it happens.</figcaption>
+        </figure>
+        <div>
+          <aside class="rule"><span class="tab">The rule</span>
+            <ul>
+              <li><b>Attributes:</b> for STR, DEX and WIL in order, roll 3d6 and keep the two highest (2–12). Then you may swap any two.</li>
+              <li><b>HP and pips:</b> roll d6 for each. The pair picks your <b>background</b> from a 6×6 table, which gives two items (A and B).</li>
+              <li><b>Weak mice get help:</b> if your highest attribute is 9 or less, roll a second background and take one of its items. At 7 or less, take both.</li>
+              <li><b>Kit:</b> Torches, Rations, both background items, and a weapon of your choice.</li>
+              <li><b>Details:</b> birthsign (with a disposition), coat colour and pattern, a physical detail (d66), and a mousy name.</li>
+            </ul>
+          </aside>
+        </div>
+      </div>
+      <dl class="controls">
+        <dt><span class="btn ember">🎲 Roll a mouse</span></dt>
+        <dd>Rolls everything at once.</dd>
+        <dt><span class="btn">🔓 / 🔒 kept</span></dt>
+        <dd>Locks next to the name, the details line, the attributes, and HP &amp; pips. A locked part is <em>kept</em> when you reroll.</dd>
+        <dt><span class="btn plain-text">Attribute rows</span></dt>
+        <dd>Each row shows its three dice, with the dropped one struck through. Click one row, then another, to <b>swap</b> those two attributes.</dd>
+        <dt><span class="btn plain-text">Bonus box</span></dt>
+        <dd>Appears for weak mice. Pick an item, or take both when the highest attribute is 7 or less.</dd>
+        <dt><span class="btn plain-text">Choose a weapon</span></dt>
+        <dd>Each option shows its damage. "Both paws" weapons take two slots.</dd>
+        <dt><span class="btn">🎲 Reroll unlocked</span></dt>
+        <dd>Rerolls everything that isn't locked. A name you typed is kept only if the name is locked.</dd>
+        <dt><span class="btn ember">Begin the adventure →</span></dt>
+        <dd>Creates the mouse with its kit already packed. A background that comes with a hireling (Beetleherd, Ale brewer, Merchant) adds that hireling automatically.</dd>
+      </dl>
+    </section>
+
+    <!-- 6 -->
+    <section class="chapter" id="sheet">
+      <h2><span class="num">6</span>The character sheet <span class="who"><span class="chip player">Player</span></span></h2>
+      <p>Your mouse's paper sheet, made clickable. The portrait is drawn from your coat colour and pattern. Double-click the name to rename it. Badges under the name show <b>Dead</b>, <b>Incapacitated</b>, <b>Encumbered</b> and current <b>Armour</b>.</p>
+      <dl class="controls">
+        <dt><span class="btn">− / +</span></dt>
+        <dd>Adjust the current value of an attribute or HP. Use these when the GM tells you to change a number directly.</dd>
+        <dt><span class="btn">✎</span></dt>
+        <dd>Switches on editing of the maximum values, for corrections and house fixes.</dd>
+      </dl>
+      <h3>Fight</h3>
+      <figure class="plate tiny">
+        <button type="button" data-zoom><img src="shots/sheet-fight.webp" alt="Fight row: 'Attack d6/d8' button, a Normal/Impaired/Enhanced selector, a damage box and 'Take damage'." width="576" height="80" loading="lazy" /></button>
+      </figure>
+      <aside class="rule"><span class="tab">The rule</span>
+        <ul>
+          <li><b>Attacks always hit.</b> Roll your weapon's die and deal that much, minus the target's armour.</li>
+          <li><b>Impaired</b> attacks (firing into cover, while grappled) roll d4 whatever the weapon. <b>Enhanced</b> attacks (a clever gambit, a helpless target) roll d12.</li>
+          <li>Light weapons d6 · Medium d6 in one paw, d8 in both · Heavy d10 (both paws) · Light ranged d6 · Heavy ranged d8 · Improvised d6. With a weapon in each paw, roll both and keep the best.</li>
+          <li><b>Damage</b> comes off HP first. Once HP is gone, it comes off STR, and the creature must make a <b>STR save</b>. Failing it is <b>critical damage</b>: the mouse becomes <b>Injured</b> and is incapacitated until an ally tends them and they take a short rest. <b>STR 0 is death.</b></li>
+          <li>After a fight, roll d6 for each weapon, armour or ammunition that was used. On 4–6, mark a usage dot. Improvised weapons always mark.</li>
+        </ul>
+      </aside>
+      <dl class="controls">
+        <dt><span class="btn ember">⚔ Attack d6/d8</span></dt>
+        <dd>Rolls the dice of whatever is in your paws; the button shows which. In a fight it hits the foe you've targeted (see <a href="#combat">Combat</a>).</dd>
+        <dt><span class="btn">Normal ▾</span></dt>
+        <dd>Normal, Impaired (d4) or Enhanced (d12).</dd>
+        <dt><span class="btn">dmg · Take damage</span></dt>
+        <dd>Applies damage from something the app isn't tracking, e.g. a fall. Armour, HP, STR, the critical save, Injured and death are all handled for you.</dd>
+        <dt><span class="btn">After the fight (n)</span></dt>
+        <dd>Appears once you've used weapons or armour. Rolls the usage check for each one.</dd>
+      </dl>
+    </section>
+
+    <!-- 7 -->
+    <section class="chapter" id="inventory">
+      <h2><span class="num">7</span>Inventory and conditions <span class="who"><span class="chip player">Player</span></span></h2>
+      <figure class="plate">
+        <button type="button" data-zoom><img src="shots/sheet-inventory.webp" alt="Inventory grid: Sword in main paw, empty body slots, lit Torches, Rations, a 20p IOU, a Bow spanning two pack slots, a Hungry condition card, then Overflow and Grit trays." width="576" height="317" loading="lazy" /></button>
+        <figcaption><b>The slot grid</b>, laid out like the paper sheet: two paw slots, two body slots and six pack slots. The Bow takes two slots, the Hungry condition takes one, and the lit Torches glow.</figcaption>
+      </figure>
+      <aside class="rule"><span class="tab">The rule</span>
+        <ul>
+          <li><b>Paw slots</b> (main and off) hold what's ready to use. <b>Body slots</b> hold worn things, swapped to a paw as a free action. <b>Pack slots</b> take time: in a fight, digging something out of your pack <em>is</em> your action.</li>
+          <li>Heavy weapons, bows and armour take <b>two slots</b>. Light armour sits on the off paw and one body slot. Heavy armour takes both body slots.</li>
+          <li><b>Conditions take up slots too.</b> Carry more than you have slots for and you're <b>Encumbered</b>: you can't run, and every save is at disadvantage.</li>
+          <li>Most items have three <b>usage dots</b> <span class="dots"><i class="on"></i><i></i><i></i></span>. When all are marked, the item is used up or broken.</li>
+          <li>Pips: the first 250 go in your pockets. Each further 250 needs a pip purse in a slot.</li>
+        </ul>
+      </aside>
+      <dl class="controls">
+        <dt><span class="btn plain-text">Drag a card</span></dt>
+        <dd>Move it to another slot. Two-slot cards fit side by side or one above the other, and the app finds the orientation that fits. Drop a card in <b>Overflow</b> to set it aside; anything there makes you Encumbered.</dd>
+        <dt><span class="btn plain-text">Usage dots</span></dt>
+        <dd>Click a dot to mark it, or click the last marked dot to clear it. A fully marked card is stamped <b>Spent</b>.</dd>
+        <dt><span class="btn plain-text">Card corner</span></dt>
+        <dd>Weapons show their die (<code>d6/d8</code>) and armour shows <code>1 def</code>. Armour only protects when it's worn in its proper slots.</dd>
+        <dt><span class="btn plain-text">Grit tray</span></dt>
+        <dd>From level 2. Drag a condition here to ignore its effects and its slot. It stays there until cleared (see <a href="#rest">Levels</a>).</dd>
+        <dt><span class="btn moss">+ Add</span></dt>
+        <dd>Opens the catalog (below).</dd>
+      </dl>
+      <div class="pair">
+        <figure class="plate">
+          <button type="button" data-zoom><img src="shots/add-dialog.webp" alt="Add to inventory dialog: Item and Condition tabs, a search box, and item buttons grouped as Weapons and Armour, with two-slot items marked." width="512" height="544" loading="lazy" /></button>
+          <figcaption><b>Add to inventory.</b> Every item in the rulebook's price lists, plus custom items (one or two slots) and custom conditions with your own clearing text.</figcaption>
+        </figure>
+        <figure class="plate">
+          <button type="button" data-zoom><img src="shots/card-menu.webp" alt="Card menu for Torches: 'Mark usage every 6 Turns', 'Usage 0/3', with buttons Light it, Give to…, Drop item." width="512" height="266" loading="lazy" /></button>
+          <figcaption><b>Click any card</b> for its details and actions.</figcaption>
+        </figure>
+      </div>
+      <dl class="controls">
+        <dt><span class="btn gold">🔥 Light it / Put out</span></dt>
+        <dd>Torches and lanterns. While lit, they burn one usage dot every 6 turns as the GM moves time forward, and go out when spent. Put them out when you don't need light.</dd>
+        <dt><span class="btn">⟳ Rotate</span></dt>
+        <dd>Turns a two-slot card between side-by-side and stacked, if there's room.</dd>
+        <dt><span class="btn">Give to…</span></dt>
+        <dd>Hands the item to another mouse or hireling. It flies into their inventory on everyone's screen.</dd>
+        <dt><span class="btn ember">Drop item</span> / <span class="btn moss">✓ Clear condition</span></dt>
+        <dd>Removes the card.</dd>
+        <dt><span class="btn gold">Cast with power</span></dt>
+        <dd>Spell tablets only, held in a paw. See <a href="#magic">Spells</a>.</dd>
+      </dl>
+      <h3>Conditions</h3>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Condition</th><th>Given when</th><th>Effect</th><th>Clears</th></tr></thead>
+        <tbody>
+          <tr><td><b>Exhausted</b></td><td>No rest, hard physical effort, bad weather travel</td><td>Takes a slot</td><td>Long rest</td></tr>
+          <tr><td><b>Frightened</b></td><td>Terrifying creatures or magic</td><td>WIL save to approach the source</td><td>Short rest</td></tr>
+          <tr><td><b>Hungry</b></td><td>A day without a ration</td><td>Takes a slot</td><td>A meal</td></tr>
+          <tr><td><b>Injured</b></td><td>Critical damage, serious harm</td><td>Disadvantage on STR &amp; DEX saves</td><td>Full rest</td></tr>
+          <tr><td><b>Drained</b></td><td>Failed spellcasting</td><td>Disadvantage on WIL saves</td><td>Full rest</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <!-- 8 -->
+    <section class="chapter" id="rest">
+      <h2><span class="num">8</span>Rest, levels and hirelings <span class="who"><span class="chip player">Player</span></span></h2>
+      <h3>Rest</h3>
+      <aside class="rule"><span class="tab">The rule</span>
+        <ul>
+          <li><b>Short rest</b> (1 turn): a swig of water, d6+1 HP back. Clears Frightened.</li>
+          <li><b>Long rest</b> (1 watch): a meal and sleep restore all HP. If HP was already full, restore d6 to an attribute instead. Clears Exhausted (and Hungry, since a long rest includes a meal).</li>
+          <li><b>Full rest</b> (a week in safety, about 20p of board): everything restored, and Injured and Drained cleared.</li>
+          <li>A mouse that doesn't rest for at least one watch a day becomes Exhausted.</li>
+        </ul>
+      </aside>
+      <p>The <span class="btn">Short</span> <span class="btn">Long</span> <span class="btn">Full</span> buttons under the inventory do all of this, and also end being incapacitated. Rests don't move the clock, so the GM should advance the turn tracker to match (1 turn, or 1 watch).</p>
+      <h3>Pips, levels and Grit</h3>
+      <figure class="plate tiny">
+        <button type="button" data-zoom><img src="shots/sheet-lower.webp" alt="Pips 6 / 250, Level 1 with '0 XP · next at 1000', an XP box with Add, and 'Grit 0'." width="576" height="100" loading="lazy" /></button>
+      </figure>
+      <aside class="rule"><span class="tab">The rule</span>
+        <p>You earn <b>1 XP per pip of treasure</b> brought back to safety (split evenly across the party), and 1 XP per 10 pips spent selflessly on a community.</p>
+        <div class="tablewrap"><table>
+          <thead><tr><th>Level</th><th>Total XP</th><th>Hit dice</th><th>Grit</th></tr></thead>
+          <tbody>
+            <tr><td class="n">1</td><td class="n">0</td><td class="n">1d6</td><td class="n">0</td></tr>
+            <tr><td class="n">2</td><td class="n">1,000</td><td class="n">2d6</td><td class="n">1</td></tr>
+            <tr><td class="n">3</td><td class="n">3,000</td><td class="n">3d6</td><td class="n">2</td></tr>
+            <tr><td class="n">4</td><td class="n">6,000</td><td class="n">4d6</td><td class="n">2</td></tr>
+            <tr><td class="n">5+</td><td class="n">+5,000 each</td><td class="n">4d6</td><td class="n">3</td></tr>
+          </tbody>
+        </table></div>
+        <p>On levelling up, roll a d20 for each attribute: if it beats the current value, that attribute goes up by 1. Then roll the new hit dice: if the result beats your max HP, it becomes your max HP; otherwise max HP goes up by 1. <b>Grit</b> lets you ignore that many conditions.</p>
+      </aside>
+      <dl class="controls">
+        <dt><span class="btn plain-text">Pips</span></dt>
+        <dd>Type the amount. The number after it is how many you can carry (250, plus 250 per pip purse). A warning appears if you're over.</dd>
+        <dt><span class="btn">+XP · Add</span></dt>
+        <dd>Adds (or, with a minus sign, removes) XP. When you have enough, a gold <span class="btn gold">★ Level up!</span> appears and runs the whole levelling procedure on stage.</dd>
+        <dt><span class="btn plain-text">Banked items and pips</span></dt>
+        <dd>Free text for what's stored in a settlement bank. Taking things out costs 1% of their value.</dd>
+      </dl>
+      <h3>Hirelings</h3>
+      <figure class="plate tiny">
+        <button type="button" data-zoom><img src="shots/sheet-hirelings.webp" alt="Hirelings section with a type dropdown 'Torchbearer (1p/day)', a Hire button, and two collapsed entries: 'Avens the Pack rat · HP 5/5' and 'Boldo the Torchbearer · HP 4/4'." width="576" height="148" loading="lazy" /></button>
+      </figure>
+      <aside class="rule"><span class="tab">The rule</span>
+        <p>A typical hireling has d6 HP, 2d6 for each attribute, and six slots (two paws and four pack slots in this app). Wages per day: torchbearer 1p, labourer 2p, tunnel digger 5p, armourer 8p, guide 10p, mouse-at-arms 10p, scholar 20p, knight 25p, interpreter 30p. When stressed, unpaid or asked to do something too dangerous, a hireling must pass a WIL save or flee.</p>
+      </aside>
+      <p><span class="btn">Hire</span> rolls up a hireling of the chosen type. Click one to open its own small sheet with saves, attack, damage, inventory and rest, then <span class="btn plain-text">Dismiss</span> to let it go. Hirelings take part in fights and act in turn order.</p>
+      <p>At the bottom of the sheet, <span class="btn plain-text">Retire this mouse</span> removes it from the table. When a mouse dies, the button reads <span class="btn ember">Lay to rest &amp; roll a new mouse</span>. The rules want you back in the game quickly, so use <span class="btn">+ New mouse</span> at the top of the tab right away.</p>
+    </section>
+
+    <!-- 9 -->
+    <section class="chapter" id="magic">
+      <h2><span class="num">9</span>Spells <span class="who"><span class="chip player">Player</span></span></h2>
+      <aside class="rule"><span class="tab">The rule</span>
+        <ul>
+          <li>Spells are spirits trapped in carved tablets. To cast one, <b>hold it in a paw</b> and read it aloud.</li>
+          <li>Choose a power up to the tablet's remaining usage dots, and roll that many d6. Each die showing <b>4–6 marks a usage dot</b>. The effect uses <b>[SUM]</b> (the total) and <b>[DICE]</b> (how many dice).</li>
+          <li><b>Miscast:</b> each 6 rolled deals d6 WIL damage to the caster. Then make a WIL save; fail it and you're <b>Drained</b>.</li>
+          <li>A spell with all its dots marked is depleted until its recharge condition is met (e.g. "bury in a peaceful field for three days"). A charged spell sells for d6×100p.</li>
+        </ul>
+      </aside>
+      <p>Put the tablet in a paw slot, click it, and choose <span class="btn gold">1 die</span> <span class="btn gold">2 dice</span>… The app rolls, marks usage, applies any miscast and the Drained save, and shows the effect text with the numbers filled in (e.g. "Deal 11 + 3 damage to a creature within sight"). The card menu also shows the spell's recharge.</p>
+    </section>
+
+    <!-- 10 -->
+    <section class="chapter" id="tabs">
+      <h2><span class="num">10</span>Party and Chronicle <span class="who"><span class="chip gm">GM</span><span class="chip player">Player</span></span></h2>
+      <div class="pair">
+        <figure class="plate">
+          <button type="button" data-zoom><img src="shots/party.webp" alt="Party tab with the mouse and two hirelings, each with HP and STR bars and current attributes." width="600" height="883" loading="lazy" /></button>
+          <figcaption><b>Party.</b> Everyone's mice and hirelings at a glance, with conditions as chips. Click one to open its sheet. You can view anyone's sheet, but only change your own; the GM can change any.</figcaption>
+        </figure>
+        <figure class="plate">
+          <button type="button" data-zoom><img src="shots/chronicle.webp" alt="Chronicle tab: a list of events like 'Fight! Snake, 2 Rats', 'Discovered: Owl Hill', 'Torches burn out!' with coloured edges." width="600" height="883" loading="lazy" /></button>
+          <figcaption><b>Chronicle.</b> Every roll and event, newest at the bottom, with the dice behind each one. A green edge means success, red means failure or a critical, and gold means levelling up or something breaking.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- 11 -->
+    <section class="chapter" id="time">
+      <h2><span class="num">11</span>Time, light and encounters <span class="who"><span class="chip gm">GM</span></span></h2>
+      <aside class="rule"><span class="tab">The rule</span>
+        <div class="tablewrap"><table>
+          <thead><tr><th>Unit</th><th>Length</th><th>Used when</th></tr></thead>
+          <tbody>
+            <tr><td><b>Round</b></td><td>under a minute</td><td>Fighting</td></tr>
+            <tr><td><b>Turn</b></td><td>about 10 minutes</td><td>Exploring a dangerous place. One major action (search a room, pick a lock, a fight) is one turn.</td></tr>
+            <tr><td><b>Watch</b></td><td>36 turns, about 6 hours</td><td>Travel and rest. A day has four: Night, Morning (from sunrise), Afternoon (from noon), Evening (from sunset).</td></tr>
+          </tbody>
+        </table></div>
+        <ul>
+          <li><b>Light:</b> a lit torch or lantern marks a usage dot every 6 turns. Electric lanterns have six dots instead of three.</li>
+          <li><b>The encounter die</b> (d6): 1 is an encounter, 2 is an <em>omen</em> (signs of one), 3–6 is all quiet. Roll it every <b>3 turns in a dungeon</b> (or after loud mayhem), and at the start of the <b>Morning and Evening watches</b> in the wilderness, where a d12 picks the hour.</li>
+          <li><b>Travel:</b> one one-mile hex per watch, or two watches through difficult terrain (streams, human roads, big rocks, hills).</li>
+        </ul>
+      </aside>
+      <p>The tracker lives in the GM's <a href="#direct">Direct tab</a>, and the result shows on everyone's clock. The app does the bookkeeping:</p>
+      <ul>
+        <li>Every <span class="btn">+1 turn</span>, <span class="btn">+1 hour</span> (6 turns) or <span class="btn">+1 watch</span> burns lit lights on every mouse and hireling and logs any that go out.</li>
+        <li>In <b>Dungeon</b> mode, the encounter die rolls on every third turn. Advancing a whole watch rolls all twelve, and the stage shows the worst result.</li>
+        <li>In <b>Wilderness</b> mode, it rolls whenever time passes sunrise or sunset, with the d12 hour.</li>
+        <li>The stage darkens at night and turns amber in the evening.</li>
+      </ul>
+      <aside class="note"><b>Encounter tables.</b> On an encounter or omen, roll on your own d6 table for that area. The rulebook suggests entries 1–3 for a common encounter, 4–5 for an unusual one, and 6 for something dangerous or weird.</aside>
+    </section>
+
+    <!-- 12 -->
+    <section class="chapter" id="direct">
+      <h2><span class="num">12</span>GM: the Direct tab <span class="who"><span class="chip gm">GM</span></span></h2>
+      <p>Your director's chair: what's on stage, what it sounds like, who's talking, and what time it is.</p>
+      <div class="pair">
+        <figure class="plate">
+          <button type="button" data-zoom><img src="shots/gm-direct.webp" alt="Direct tab: 'On stage: The Rotting Granary' with a Sound dropdown, Speak as chips (Old Wick, Grey Owl, Narrator), a text box and Say button; a Scenes list; the Turn tracker grid with +1 turn, +1 hour, +1 watch and Encounter die; and Notes." width="600" height="883" loading="lazy" /></button>
+        </figure>
+        <figure class="plate">
+          <button type="button" data-zoom><img src="shots/gm-scene-editor.webp" alt="Scene editor: Soundscape dropdown, Characters list with Old Wick (mouse, Tan, Solid) and Grey Owl (creature)." width="512" height="816" loading="lazy" /></button>
+        </figure>
+      </div>
+      <h4>On stage</h4>
+      <dl class="controls">
+        <dt><span class="btn">Sound ▾</span></dt>
+        <dd>Changes the soundscape live, crossfading on every player's machine: silence, meadow, forest, river, rain, storm (with thunder), howling wind, cave (drips), hearth (crackling fire) or night (crickets).</dd>
+        <dt><span class="btn plain-text">Speak as</span></dt>
+        <dd>Pick a character from the current scene, or the Narrator. Type their line and press <kbd>Enter</kbd> (or <span class="btn ember">Say</span>), and it appears in the speech box on every stage. <span class="btn">Hide</span> clears the box.</dd>
+        <dt><span class="btn">Clear stage</span></dt>
+        <dd>Removes the scene and goes back to the plain table.</dd>
+      </dl>
+      <h4>Scenes</h4>
+      <p>Prepare scenes before the session: places the mice will visit, each with art, sound and characters.</p>
+      <dl class="controls">
+        <dt><span class="btn moss">+ New scene</span> / <span class="btn">✎</span></dt>
+        <dd>Opens the editor:
+          <ul>
+            <li><b>Title</b> and <b>subtitle</b>, shown on the title card.</li>
+            <li><b>Backdrop:</b> 16 painted landscapes (meadow, forest, streambed, pond, boulder field, ruins, farmstead, cavern, snow…), 4 drawn moods for places without art (candlelit hall, dark tunnel, starry night, mouse settlement), or any <code>https://</code> image link you paste.</li>
+            <li><b>Soundscape:</b> picking a backdrop suggests one.</li>
+            <li><b>Characters:</b> <span class="btn">+ Mouse</span> gets a face drawn from the coat colour and pattern you pick. <span class="btn">+ Creature</span> gets an icon (cat, owl, frog, spider, crow, rat, snake, ghost, faerie and about 20 more) on a medallion in a colour you choose.</li>
+            <li><b>GM notes</b>, which only you see.</li>
+          </ul>
+        </dd>
+        <dt><span class="btn ember">▶ Show</span></dt>
+        <dd>Puts the scene on everyone's stage with its title card and soundscape. The button then reads <span class="btn gold">Showing</span>. Edits to the scene on stage update straight away.</dd>
+        <dt><span class="btn">▲ ▼ · 🗑</span></dt>
+        <dd>Reorder scenes, or delete one (click 🗑 twice to confirm).</dd>
+      </dl>
+      <h4>Turn tracker</h4>
+      <dl class="controls">
+        <dt><span class="btn">Dungeon · Wilderness</span></dt>
+        <dd>Controls when the encounter die rolls (see <a href="#time">§11</a>). Travelling on the map switches this to Wilderness automatically.</dd>
+        <dt><span class="btn">Spring ▾</span></dt>
+        <dd>The season. It changes the map's colours and the clock icon.</dd>
+        <dt><span class="btn plain-text">The grid</span></dt>
+        <dd>The current watch as six columns (hours) of six turns, like the paper session sheet. Dark is past and orange is now. In dungeon mode, gold-edged boxes are the turns when the encounter die rolls.</dd>
+        <dt><span class="btn">+1 turn · +1 hour · +1 watch</span></dt>
+        <dd>Moves time forward, burning lights and rolling encounter dice as due. The line underneath lists which lights are lit.</dd>
+        <dt><span class="btn ember">🎲 Encounter die</span></dt>
+        <dd>Rolls it now, e.g. after the mice make a racket.</dd>
+        <dt><span class="btn plain-text">Notes</span></dt>
+        <dd>Your private campaign notes: factions, rumours, secrets. Saved when you click away.</dd>
+      </dl>
+      <aside class="note"><b>Privacy.</b> Scene notes, campaign notes and unrevealed map hexes are never sent to players' browsers at all, so nobody can find them by peeking at the page.</aside>
+    </section>
+
+    <!-- 13 -->
+    <section class="chapter" id="map">
+      <h2><span class="num">13</span>GM: the hexcrawl map <span class="who"><span class="chip gm">GM</span><span class="chip player">Player</span></span></h2>
+      <aside class="rule"><span class="tab">The rule</span>
+        <ul>
+          <li>Start with a <b>5×5 map of one-mile hexes</b> and a friendly mouse settlement in the centre.</li>
+          <li>For each hex, roll a <b>type</b> (d6: 1–2 countryside, 3–4 forest, 5 river, 6 human town), a <b>landmark</b> from that type's d20 table, and a <b>detail</b> (d6 then d8), e.g. "Rat bandit hideout (Who do they prey on?)".</li>
+          <li>Detail two to four landmarks as adventure sites, spread out so the mice criss-cross the map. Seed a d6 rumour table: 1–3 true, 4–5 partly true, 6 false.</li>
+          <li>When the mice first leave an adventure site, show them a <em>blank</em> map with only the settlement, the site and a couple of well-known places. They find the rest by travelling, and spot obvious landmarks automatically as they pass through.</li>
+        </ul>
+      </aside>
+      <div class="pair">
+        <figure class="plate">
+          <button type="button" data-zoom><img src="shots/gm-map.webp" alt="GM map editor: the full generated hex map in the GM's view with hidden hexes hatched, Owl Hill selected, and the hex inspector below." width="600" height="883" loading="lazy" /></button>
+          <figcaption><b>The GM's map.</b> Every hex is visible to you; hexes still hidden from players are hatched.</figcaption>
+        </figure>
+        <figure class="plate">
+          <button type="button" data-zoom><img src="shots/stage-map.webp" alt="Player's stage showing the map: fog over unexplored hexes, the Home settlement and Owl Hill revealed, the party token on Owl Hill." width="804" height="883" loading="lazy" /></button>
+          <figcaption><b>The players' map.</b> Fog over everything unexplored. The party token glides to where they are.</figcaption>
+        </figure>
+      </div>
+      <dl class="controls">
+        <dt><span class="btn ember">🎲 Generate map</span> / <span class="btn">Blank map</span></dt>
+        <dd>Shown when the map is empty. Generate rolls every hex from the rulebook tables at the size you pick (up to 15×15); Blank gives plain countryside to paint yourself.</dd>
+        <dt><span class="btn ember">Show map on stage</span></dt>
+        <dd>Swaps everyone's stage from the scene to the map. Click again, or show a scene, to switch back.</dd>
+        <dt><span class="btn">Select</span></dt>
+        <dd>Click a hex to open the inspector.</dd>
+        <dt><span class="btn">Reveal · Fog</span></dt>
+        <dd>Brushes: click hexes to reveal them to players, or hide them again.</dd>
+        <dt><span class="btn">Terrain swatches</span></dt>
+        <dd>Paint brushes for countryside, forest, river, human town and mouse settlement.</dd>
+        <dt><span class="btn plain-text">Inspector</span></dt>
+        <dd>
+          <ul>
+            <li><b>Type, Landmark</b> and <b>Detail</b>, each with a 🎲 reroll button.</li>
+            <li><b>Name on map</b>, the label players see.</li>
+            <li><b>Difficult terrain:</b> crossing takes two watches, shown as a dashed ring.</li>
+            <li><b>GM notes</b> and <b>Revealed</b>.</li>
+          </ul>
+        </dd>
+        <dt><span class="btn ember">Travel here</span></dt>
+        <dd>Moves the party into this hex and reveals it. One watch passes (two through difficult terrain), with lights burning and the sunrise and sunset encounter dice rolling. Players see "Discovered: …" for a new hex.</dd>
+        <dt><span class="btn">Place party here</span></dt>
+        <dd>Moves the party without passing time, e.g. to set up a starting position.</dd>
+        <dt><span class="btn plain-text">Map size &amp; regenerate</span></dt>
+        <dd>Resizing keeps existing hexes. Regenerating replaces the whole map, so it asks you to confirm.</dd>
+      </dl>
+      <p>Players can hover over a revealed hex to see its name and landmark. The landmark <em>detail</em> (the question in brackets) is shown only to you.</p>
+    </section>
+
+    <!-- 14 -->
+    <section class="chapter" id="combat">
+      <h2><span class="num">14</span>Combat <span class="who"><span class="chip gm">GM</span><span class="chip player">Player</span></span></h2>
+      <aside class="rule"><span class="tab">The rule</span>
+        <ul>
+          <li><b>Who goes first:</b> if the mice attack unsuspecting foes, they act first. Otherwise each mouse makes a <b>DEX save</b>: pass and you act before the foes, fail and you act after. That order holds for the rest of the fight. Frogs always go first unless surprised.</li>
+          <li><b>On your turn:</b> move up to 12″ and take one action: attack, negotiate, flee, or a risky gambit such as tripping or disarming (usually a save).</li>
+          <li><b>Attacks always hit</b>, and damage works as described in <a href="#sheet">Fight</a>. Some creatures are different: a spider's or centipede's bite damages DEX, a ghost's touch damages WIL, and many have their own critical effect in place of Injured ("carried away in web", "swallowed whole").</li>
+          <li><b>Morale:</b> an enemy makes a WIL save, and flees or surrenders if it fails, when it is clearly outmatched at the start, takes critical damage for the first time, or sees an ally fall or flee.</li>
+        </ul>
+      </aside>
+      <h3>Setting up a fight <span class="who"><span class="chip gm">GM</span></span></h3>
+      <figure class="plate narrow">
+        <button type="button" data-zoom><img src="shots/gm-fight-setup.webp" alt="Fight tab setup: bestiary cards for Frog, Ghost, Mouse, Owl, Rat (2 chosen), Snake (1 chosen) and Spider, each with stats and what it wants." width="600" height="883" loading="lazy" /></button>
+      </figure>
+      <dl class="controls">
+        <dt><span class="btn">− n +</span></dt>
+        <dd>How many of each creature. The cards list the rulebook stats: HP, STR, DEX, WIL, armour, attacks, and what the creature <em>wants</em>, which is a good hook for talking instead of fighting.</dd>
+        <dt><span class="btn">🎲 Reaction roll</span></dt>
+        <dd>2d6 for how a creature feels about the mice when it isn't obvious: 2 hostile, 3–5 unfriendly, 6–8 unsure, 9–11 talkative, 12 helpful.</dd>
+        <dt><span class="btn plain-text">Who strikes first?</span></dt>
+        <dd><b>DEX saves</b> (the normal case), <b>Mice ambush</b> or <b>Foes ambush</b>.</dd>
+        <dt><span class="btn ember">⚔ Start the fight</span></dt>
+        <dd>Rolls initiative (each mouse's and hireling's DEX save shows on stage), sets the turn order and switches every stage to the battle screen.</dd>
+      </dl>
+      <h3>The player's turn <span class="who"><span class="chip player">Player</span></span></h3>
+      <figure class="plate">
+        <button type="button" data-zoom><img src="shots/player-combat.webp" alt="Player's combat view: Round 1 with Snake (targeted), Rat 1 and Rat 2 tokens, a turn order ribbon, a 'your turn' banner, and the turn bar in the side panel with Target chips and an 'Attack Snake' button." width="1440" height="960" loading="lazy" /></button>
+        <figcaption>When your mouse comes up, a banner and a chime tell you it's your turn, and the turn bar opens at the top of your panel.</figcaption>
+      </figure>
+      <dl class="controls">
+        <dt><span class="btn plain-text">Foe tokens</span></dt>
+        <dd>Each foe with HP and STR bars. <b>Click a foe to target it</b> (it lifts and shows TARGET). Foes that are out are greyed and stamped Down, Fled or Slain.</dd>
+        <dt><span class="btn plain-text">Turn order</span></dt>
+        <dd>The ribbon under the foes: green for the party, red for foes, gold ▶ for whoever is acting, and a ring around your own mice.</dd>
+        <dt><span class="btn plain-text">Target chips</span></dt>
+        <dd>Another way to pick a target.</dd>
+        <dt><span class="btn ember">⚔ Attack Snake (d8)</span></dt>
+        <dd>Rolls your weapon dice and damages the target: armour, HP, STR, its critical save and morale are all automatic. The Normal / Impaired / Enhanced selector works as on the sheet.</dd>
+        <dt><span class="btn">End turn →</span></dt>
+        <dd>Passes to the next in order, skipping anyone who's down or dead. For anything other than an attack (a gambit, a spell, grabbing something from your pack), use the sheet's Save buttons or card menus, then End turn.</dd>
+      </dl>
+      <h3>Running the foes <span class="who"><span class="chip gm">GM</span></span></h3>
+      <figure class="plate">
+        <button type="button" data-zoom><img src="shots/gm-fight.webp" alt="GM's combat view: the map stage with foe tokens and a result 'Snake takes 5 damage', and the Fight tab with Round 1, Next turn, the order chips and foe cards with attack buttons, target and mode selectors, Hurt and Morale." width="1440" height="960" loading="lazy" /></button>
+        <figcaption>One card per foe. Hirelings (here Avens and Boldo) take their own turns in the order.</figcaption>
+      </figure>
+      <dl class="controls">
+        <dt><span class="btn gold">Next turn →</span></dt>
+        <dd>Moves to the next combatant. You can always do this, e.g. to skip someone who's thinking too long.</dd>
+        <dt><span class="btn ember">d8 bite</span> at <span class="btn">mouse ▾</span></dt>
+        <dd>The foe's attacks. Pick the target mouse and Normal, Impaired or Enhanced, then click the attack. The mouse takes the damage with all the rules applied, including DEX or WIL damage and the creature's own critical effect.</dd>
+        <dt><span class="btn">dmg · Hurt</span></dt>
+        <dd>Deals damage to a foe by hand, e.g. from a trap or a spell.</dd>
+        <dt><span class="btn">Morale</span></dt>
+        <dd>Calls a WIL save, e.g. when the foe is clearly outmatched at the start. The other two triggers (first critical damage, an ally falling or fleeing) roll automatically.</dd>
+        <dt><span class="btn">active ▾</span></dt>
+        <dd>Sets a foe's status by hand: active, down, fled or dead.</dd>
+        <dt><span class="btn plain-text">Reinforcements</span></dt>
+        <dd>Adds more foes mid-fight, at the end of the order.</dd>
+        <dt><span class="btn moss">Victory! End the fight</span></dt>
+        <dd>Appears when no foe is left standing; otherwise use "End the fight…" and confirm. The Chronicle records who was slain, down or fled. Then each player should press <b>After the fight</b> on their sheet to check their gear.</dd>
+      </dl>
+      <aside class="note"><b>Creature specials.</b> Crow songs, faerie and owl spells, ghostly powers and the snake's per-round swallowing damage aren't automated. Each foe card shows the creature's critical effect so you can run the rest by hand.</aside>
+    </section>
+
+    <!-- 15 -->
+    <section class="chapter" id="rulings">
+      <h2><span class="num">15</span>Rulings and what's missing</h2>
+      <h3>Rulings this table uses</h3>
+      <p>The rulebook leaves these open, so the app picks one way, agreed for this group:</p>
+      <ul>
+        <li>Advantage and disadvantage on the same save <b>cancel out</b> to a normal roll.</li>
+        <li>A <b>long rest</b> also clears <b>Hungry</b>, since it includes a meal.</li>
+        <li><b>Hirelings</b> have two paw slots and four pack slots, as on the hireling sheet.</li>
+        <li>A long rest at full HP restores d6 to the <b>most-damaged</b> attribute.</li>
+        <li>A foe tests morale for "critical damage" the first time it takes STR damage and stays standing (failing the STR save already takes it out of the fight).</li>
+      </ul>
+      <h3>Not in the app yet</h3>
+      <ul>
+        <li>Weather by season (the 2d6 table) and its Exhausted saves for travel. Roll <code>2d6</code> in the dice tray for now.</li>
+        <li>Generators for settlements, NPCs, adventure sites and treasure; factions; a quest journal.</li>
+        <li>Warbands and their battles.</li>
+        <li>Automatic Exhausted for a day without rest, and Hungry for a day without a ration. Add these from <span class="btn moss">+ Add</span> → Condition.</li>
+      </ul>
+      <footer class="colophon">
+        <p>Mausritter is by Isaac Williams (Losing Games). Get the rulebook at mausritter.com. This handbook paraphrases its rules to explain the app, and is not a substitute for the book. Icons by Lorc, Delapouite and contributors at game-icons.net (CC BY 3.0). Backdrops by rubberduck and Spring Spring (CC0). 3D dice by dice-box-threejs (MIT). Screenshots are from a live test session; names and rolls are random.</p>
+      </footer>
+    </section>
+  </main>
+</div>
+
+<dialog id="zoom" aria-label="Screenshot">
+  <button type="button" id="zoom-close">Close</button>
+  <img id="zoom-img" alt="" />
+  <p id="zoom-cap"></p>
+</dialog>
+
+<script>
+  const dlg = document.getElementById("zoom");
+  const img = document.getElementById("zoom-img");
+  const cap = document.getElementById("zoom-cap");
+  document.querySelectorAll("[data-zoom]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const src = btn.querySelector("img");
+      img.src = src.src;
+      img.alt = src.alt;
+      cap.textContent = src.alt;
+      if (typeof dlg.showModal === "function") dlg.showModal();
+    });
+  });
+  document.getElementById("zoom-close").addEventListener("click", () => dlg.close());
+  dlg.addEventListener("click", (e) => {
+    if (e.target === dlg || e.target === img) dlg.close();
+  });
+</script>

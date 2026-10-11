@@ -6,3 +6,4 @@ dist
 reference/*.pdf
 test-results
 playwright-report
+guide/shots
